@@ -1,0 +1,12 @@
+/*
+ * D&D5e / Foundry v14 — leave only CP, SP and GP.
+ * Hide EP and PP without hiding the whole currency panel.
+ */
+[data-currency="ep"], [data-currency="pp"],
+[data-denomination="ep"], [data-denomination="pp"],
+[data-key="ep"], [data-key="pp"],
+[data-currency-key="ep"], [data-currency-key="pp"],
+input[name="system.currency.ep"],
+input[name="system.currency.pp"] {
+  display: none !important;
+}
