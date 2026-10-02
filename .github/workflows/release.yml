@@ -1,0 +1,54 @@
+name: Build and publish Foundry module
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - module.json
+      - scripts/**
+      - styles/**
+      - assets/**
+      - README.md
+      - CHANGELOG.md
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate module
+        shell: bash
+        run: |
+          find scripts -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          node -e 'const m=require("./module.json"); if(m.id!=="lipatos-three-currencies-global"||!m.version||!m.manifest||!m.download) process.exit(1);'
+          test -s assets/coins/gold.webp
+          test -s assets/coins/silver.webp
+          test -s assets/coins/copper.webp
+
+      - name: Build ZIP
+        shell: bash
+        run: |
+          zip -q -r lipatos-three-currencies-global.zip module.json scripts styles assets README.md CHANGELOG.md
+
+      - name: Publish versioned release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION=$(node -p 'require("./module.json").version')
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" lipatos-three-currencies-global.zip module.json --clobber
+          else
+            gh release create "$TAG" lipatos-three-currencies-global.zip module.json \
+              --target "$GITHUB_SHA" \
+              --title "LipatoS — Три валюты D&D5e $TAG" \
+              --notes "Foundry VTT 14 / D&D5e 6.0.5. Физические монеты, контейнеры без встроенной валюты и автоматическое зачисление GP/SP/CP персонажу."
+          fi
