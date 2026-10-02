@@ -68,3 +68,21 @@
 :is(.dnd5e2, .dnd5e2-journal) :is(i, span).currency.cp {
   background-image: url("../assets/coins/copper-v2.webp") !important;
 }
+
+.lps-coin-transfer-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+  margin: .65rem 0 .35rem;
+}
+
+.lps-coin-transfer-presets button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+}
+
+.lps-coin-transfer-presets button i.fa-circle-half-stroke {
+  font-size: 1.05em;
+}

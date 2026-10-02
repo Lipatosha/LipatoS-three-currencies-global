@@ -13,6 +13,7 @@ const CURRENCY_DRAG_TYPE = "LipatoSCurrency";
 let activeCurrencyDrag = null;
 let globalCurrencyDragBound = false;
 let currencyTooltipObserver = null;
+let amountPresetBound = false;
 
 function isDnd5e() {
   return game.system?.id === "dnd5e";
@@ -142,7 +143,6 @@ function decorateCharacterCurrency(app, html) {
       icon.dataset.actorUuid = actor.uuid;
       icon.dataset.tooltip = COINS[denomination].name;
       icon.setAttribute("aria-label", COINS[denomination].name);
-      icon.title = COINS[denomination].name;
 
       if (wiredCurrencyIcons.has(icon)) continue;
       wiredCurrencyIcons.add(icon);
@@ -200,7 +200,7 @@ function decorateCurrencyTooltipElement(element) {
   const name = COINS[denomination].name;
   element.dataset.tooltip = name;
   element.setAttribute("aria-label", name);
-  element.title = name;
+  element.removeAttribute("title");
   if (element instanceof HTMLImageElement && !element.alt) element.alt = name;
 }
 
@@ -312,21 +312,57 @@ function escapeHtml(value) {
   })[char]);
 }
 
-async function promptCurrencyAmount(actor, denomination, container) {
-  const maximum = Math.max(0, Math.floor(Number(actor.system?.currency?.[denomination] ?? 0)));
+function installAmountPresetButtons() {
+  if (amountPresetBound) return;
+  amountPresetBound = true;
+
+  document.addEventListener("click", event => {
+    const button = event.target.closest?.("[data-lipatos-amount-preset]");
+    if (!button) return;
+
+    const form = button.closest("form");
+    const input = form?.elements?.amount ?? form?.querySelector?.('input[name="amount"]');
+    if (!input) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const maximum = Math.max(1, Math.floor(Number(input.max) || Number(button.dataset.maximum) || 1));
+    const preset = button.dataset.lipatosAmountPreset;
+    input.value = preset === "half" ? Math.max(1, Math.floor(maximum / 2)) : maximum;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    input.focus();
+    input.select();
+  }, true);
+}
+
+async function promptTransferAmount({ maximum, fromName, toName, title="Передать монеты" }) {
+  maximum = Math.max(0, Math.floor(Number(maximum) || 0));
   if (!maximum) return 0;
 
   const result = await foundry.applications.api.DialogV2.prompt({
     rejectClose: false,
-    window: { title: "Переместить монеты" },
-    position: { width: 380 },
+    window: { title },
+    position: { width: 400 },
     content:
-      '<div class="form-group"><label>Количество</label><div class="form-fields">'
+      '<div class="lps-coin-transfer">'
+      + '<div class="form-group"><label>Количество</label><div class="form-fields">'
       + '<input name="amount" type="number" min="1" max="' + maximum + '" step="1" value="' + maximum + '">'
-      + '</div></div><p class="notes">Из «' + escapeHtml(actor.name) + '» в «'
-      + escapeHtml(container.name) + '». Доступно: ' + maximum + '.</p>',
+      + '</div></div>'
+      + '<div class="lps-coin-transfer-presets">'
+      + '<button type="button" data-lipatos-amount-preset="all" data-maximum="' + maximum + '">'
+      + '<i class="fa-solid fa-coins"></i><span>Всё</span></button>'
+      + '<button type="button" data-lipatos-amount-preset="half" data-maximum="' + maximum + '">'
+      + '<i class="fa-solid fa-circle-half-stroke"></i><span>Половина</span></button>'
+      + '</div>'
+      + '<p class="notes">Из «' + escapeHtml(fromName) + '» в «' + escapeHtml(toName)
+      + '». Доступно: ' + maximum + '.</p>'
+      + '<p class="notes">Кнопки «Всё» и «Половина» только подставляют число. Для передачи нажмите «Подтвердить».</p>'
+      + '</div>',
     ok: {
-      label: "Переместить",
+      label: "Подтвердить",
+      icon: "fa-solid fa-check",
       callback: (_event, button) => {
         const amount = Math.floor(Number(button.form.elements.amount.value));
         if (!Number.isFinite(amount)) return 0;
@@ -334,7 +370,17 @@ async function promptCurrencyAmount(actor, denomination, container) {
       }
     }
   });
+
   return Number(result) || 0;
+}
+
+async function promptCurrencyAmount(actor, denomination, container) {
+  return promptTransferAmount({
+    maximum: actor.system?.currency?.[denomination] ?? 0,
+    fromName: actor.name,
+    toName: container.name,
+    title: "Переместить " + COINS[denomination].name.toLowerCase()
+  });
 }
 
 async function moveCurrencyToContainer(data, container) {
@@ -464,19 +510,37 @@ async function absorbDroppedCoin(actor, item) {
     return;
   }
 
-  const quantity = coinQuantity(item);
-  if (!(await creditActorCurrency(actor, denomination, quantity))) return;
+  const maximum = coinQuantity(item);
+  const sourceContainer = item.system?.container
+    ? collectionForContainer(item)?.get?.(item.system.container)
+    : null;
+  const amount = await promptTransferAmount({
+    maximum,
+    fromName: sourceContainer?.name ?? item.name,
+    toName: actor.name,
+    title: "Передать " + COINS[denomination].name.toLowerCase()
+  });
+  if (!amount) return;
+
+  if (!(await creditActorCurrency(actor, denomination, amount))) return;
 
   if (item.isEmbedded) {
     try {
-      await item.delete();
+      if (amount >= maximum) await item.delete();
+      else await item.update({ "system.quantity": maximum - amount });
     } catch (err) {
-      console.error(MODULE_ID + " | Монеты зачислены, но исходную стопку удалить не удалось", err);
-      ui.notifications.warn("LipatoS: монеты зачислены, но исходную стопку удалить не удалось.");
+      console.error(MODULE_ID + " | Монеты зачислены, но исходную стопку обновить не удалось", err);
+      // Roll back the actor currency to avoid duplication if source update fails.
+      await enqueueActor(actor, async () => {
+        const current = Math.max(0, Math.floor(Number(actor.system?.currency?.[denomination] ?? 0)));
+        await actor.update({ ["system.currency." + denomination]: Math.max(0, current - amount) });
+      });
+      ui.notifications.error("LipatoS: не удалось завершить передачу монет.");
+      return;
     }
   }
 
-  ui.notifications.info(actor.name + ": +" + quantity + " × " + denominationLabel(denomination));
+  ui.notifications.info(actor.name + ": +" + amount + " × " + denominationLabel(denomination));
 }
 
 function onCharacterInventoryDrop(event, actor) {
@@ -750,6 +814,7 @@ Hooks.once("ready", () => {
   if (!isDnd5e()) return;
   installGlobalCurrencyDrag();
   installCurrencyTooltipObserver();
+  installAmountPresetButtons();
 });
 
 Hooks.once("ready", async () => {
