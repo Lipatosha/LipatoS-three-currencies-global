@@ -7,6 +7,9 @@ const COINS = Object.freeze({
 
 const actorQueues = new Map();
 const wiredActorRoots = new WeakSet();
+const wiredCurrencyIcons = new WeakSet();
+const wiredContainerRoots = new WeakSet();
+const CURRENCY_DRAG_TYPE = "LipatoSCurrency";
 
 function isDnd5e() {
   return game.system?.id === "dnd5e";
@@ -97,6 +100,155 @@ function actorFromApp(app) {
   return null;
 }
 
+function applyCurrencyIcons() {
+  const currencies = CONFIG?.DND5E?.currencies;
+  if (!currencies) return;
+  for (const denomination of ["gp", "sp", "cp"]) {
+    if (currencies[denomination]) currencies[denomination].icon = COINS[denomination].img;
+  }
+}
+
+function decorateCharacterCurrency(app, html) {
+  if (!isDnd5e()) return;
+  const actor = actorFromApp(app);
+  if (actor?.type !== "character") return;
+
+  const root = getRoot(html, app);
+  if (!root) return;
+  root.classList.add("lipatos-physical-currency-icons");
+
+  for (const denomination of ["gp", "sp", "cp"]) {
+    for (const input of root.querySelectorAll('input[name="system.currency.' + denomination + '"]')) {
+      const label = input.closest("label") ?? input.parentElement;
+      const icon = label?.querySelector("i.currency." + denomination);
+      if (!icon) continue;
+
+      icon.draggable = true;
+      icon.dataset.lipatosCurrency = denomination;
+      icon.dataset.tooltip = "Перетащить " + COINS[denomination].name.toLowerCase() + " в контейнер";
+      icon.setAttribute("aria-label", icon.dataset.tooltip);
+
+      if (wiredCurrencyIcons.has(icon)) continue;
+      wiredCurrencyIcons.add(icon);
+
+      icon.addEventListener("dragstart", event => {
+        const available = Math.max(0, Math.floor(Number(actor.system?.currency?.[denomination] ?? 0)));
+        if (!available) {
+          event.preventDefault();
+          ui.notifications.warn("LipatoS: у персонажа нет " + COINS[denomination].name.toLowerCase() + ".");
+          return;
+        }
+
+        event.stopPropagation();
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", JSON.stringify({
+          type: CURRENCY_DRAG_TYPE,
+          actorUuid: actor.uuid,
+          denomination
+        }));
+        icon.classList.add("lipatos-dragging-currency");
+      });
+
+      icon.addEventListener("dragend", () => icon.classList.remove("lipatos-dragging-currency"));
+    }
+  }
+}
+
+function currencyDragData(event) {
+  const data = parseDropData(event);
+  return data?.type === CURRENCY_DRAG_TYPE && COINS[data.denomination] ? data : null;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[char]);
+}
+
+async function promptCurrencyAmount(actor, denomination, container) {
+  const maximum = Math.max(0, Math.floor(Number(actor.system?.currency?.[denomination] ?? 0)));
+  if (!maximum) return 0;
+  if (maximum === 1) return 1;
+
+  const result = await foundry.applications.api.DialogV2.prompt({
+    rejectClose: false,
+    window: { title: "Переместить монеты" },
+    position: { width: 380 },
+    content:
+      '<div class="form-group"><label>Количество</label><div class="form-fields">'
+      + '<input name="amount" type="number" min="1" max="' + maximum + '" step="1" value="' + maximum + '">'
+      + '</div></div><p class="notes">Из «' + escapeHtml(actor.name) + '» в «'
+      + escapeHtml(container.name) + '». Доступно: ' + maximum + '.</p>',
+    ok: {
+      label: "Переместить",
+      callback: (_event, button) => {
+        const amount = Math.floor(Number(button.form.elements.amount.value));
+        if (!Number.isFinite(amount)) return 0;
+        return Math.min(maximum, Math.max(1, amount));
+      }
+    }
+  });
+  return Number(result) || 0;
+}
+
+async function moveCurrencyToContainer(data, container) {
+  if (!data?.actorUuid || !COINS[data.denomination] || container?.type !== "container") return;
+
+  const actor = await fromUuid(data.actorUuid);
+  if (actor?.documentName !== "Actor" || actor.type !== "character") return;
+
+  if (!game.user.isGM && (!actor.isOwner || !container.isOwner)) {
+    ui.notifications.warn("LipatoS: нет прав на перемещение этих монет.");
+    return;
+  }
+  if (!(await container.system.canDropContents())) return;
+
+  const denomination = data.denomination;
+  const amount = await promptCurrencyAmount(actor, denomination, container);
+  if (!amount) return;
+
+  await enqueueActor(actor, async () => {
+    const current = Math.max(0, Math.floor(Number(actor.system?.currency?.[denomination] ?? 0)));
+    if (current < amount) throw new Error("Недостаточно монет у персонажа.");
+
+    await actor.update({ ["system.currency." + denomination]: current - amount });
+    try {
+      await putPhysicalCoinsInContainer(container, denomination, amount);
+    } catch (err) {
+      const after = Math.max(0, Math.floor(Number(actor.system?.currency?.[denomination] ?? 0)));
+      await actor.update({ ["system.currency." + denomination]: after + amount });
+      throw err;
+    }
+  });
+
+  ui.notifications.info(actor.name + ": -" + amount + " × " + denominationLabel(denomination)
+    + " → " + container.name);
+}
+
+function bindContainerCurrencyDrop(app, html) {
+  if (!isDnd5e()) return;
+  const container = getDocument(app);
+  if (container?.documentName !== "Item" || container.type !== "container") return;
+
+  const root = getRoot(html, app);
+  if (!root || wiredContainerRoots.has(root)) return;
+  wiredContainerRoots.add(root);
+
+  root.addEventListener("drop", event => {
+    const data = currencyDragData(event);
+    if (!data) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+
+    void moveCurrencyToContainer(data, container).catch(err => {
+      console.error(MODULE_ID + " | Ошибка перемещения валюты в контейнер", err);
+      ui.notifications.error("LipatoS: не удалось переместить монеты в контейнер.");
+    });
+  }, true);
+}
+
 function parseDropData(event) {
   try {
     return foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
@@ -172,10 +324,29 @@ function onCharacterInventoryDrop(event, actor) {
   if (event.defaultPrevented || actor?.type !== "character") return;
   if (!event.target?.closest?.("dnd5e-inventory, .inventory-element")) return;
 
-  // Dropping onto a container icon keeps the coins physical inside the container.
+  const data = parseDropData(event);
+
+  if (data?.type === CURRENCY_DRAG_TYPE) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+
+    const target = event.target.closest(".container[data-item-id]");
+    if (!target) return;
+
+    const container = actor.items.get(target.dataset.itemId);
+    if (container?.type !== "container") return;
+
+    void moveCurrencyToContainer(data, container).catch(err => {
+      console.error(MODULE_ID + " | Ошибка перемещения валюты в контейнер", err);
+      ui.notifications.error("LipatoS: не удалось переместить монеты в контейнер.");
+    });
+    return;
+  }
+
+  // Dropping an existing physical coin onto a container keeps it physical.
   if (event.target.closest(".container[data-item-id]")) return;
 
-  const data = parseDropData(event);
   if (data?.type !== "Item") return;
   const item = syncItemFromDropData(data);
   if (!item || !coinDenomination(item)) return;
@@ -361,16 +532,28 @@ async function migrateAllContainerCurrency() {
   }
 }
 
+Hooks.once("init", applyCurrencyIcons);
+
 Hooks.on("renderApplicationV2", (app, html) => {
   hideContainerCurrency(app, html);
   bindCharacterDrop(app, html);
+  decorateCharacterCurrency(app, html);
+  bindContainerCurrencyDrop(app, html);
 });
 Hooks.on("renderApplication", (app, html) => {
   hideContainerCurrency(app, html);
   bindCharacterDrop(app, html);
+  decorateCharacterCurrency(app, html);
+  bindContainerCurrencyDrop(app, html);
 });
-Hooks.on("renderItemSheet", (app, html) => hideContainerCurrency(app, html));
-Hooks.on("renderActorSheet", (app, html) => bindCharacterDrop(app, html));
+Hooks.on("renderItemSheet", (app, html) => {
+  hideContainerCurrency(app, html);
+  bindContainerCurrencyDrop(app, html);
+});
+Hooks.on("renderActorSheet", (app, html) => {
+  bindCharacterDrop(app, html);
+  decorateCharacterCurrency(app, html);
+});
 Hooks.on("dnd5e.dropItemSheetData", onContainerSheetDrop);
 
 Hooks.on("createItem", (item, _options, userId) => {

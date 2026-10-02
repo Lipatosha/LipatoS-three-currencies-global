@@ -2,3 +2,31 @@
 .lipatos-physical-coins-container dnd5e-inventory section.currency {
   display: none !important;
 }
+
+/* Character currency: use the same artwork as the physical coin items and make the icon draggable. */
+.lipatos-physical-currency-icons section.currency i.currency.gp,
+.lipatos-physical-currency-icons section.currency i.currency.sp,
+.lipatos-physical-currency-icons section.currency i.currency.cp {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  cursor: grab;
+  user-select: none;
+}
+
+.lipatos-physical-currency-icons section.currency i.currency.gp {
+  background-image: url("../assets/coins/gold.webp") !important;
+}
+.lipatos-physical-currency-icons section.currency i.currency.sp {
+  background-image: url("../assets/coins/silver.webp") !important;
+}
+.lipatos-physical-currency-icons section.currency i.currency.cp {
+  background-image: url("../assets/coins/copper.webp") !important;
+}
+.lipatos-physical-currency-icons section.currency i.currency:active,
+.lipatos-physical-currency-icons section.currency i.currency.lipatos-dragging-currency {
+  cursor: grabbing;
+}
