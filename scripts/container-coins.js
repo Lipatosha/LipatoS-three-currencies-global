@@ -1,6 +1,6 @@
 const MODULE_ID = "lipatos-three-currencies-global";
 const COINS = Object.freeze({
-  cp: { name: "Медная монета", img: "modules/lipatos-three-currencies-global/assets/coins/copper.webp" },
+  cp: { name: "Медная монета", img: "modules/lipatos-three-currencies-global/assets/coins/copper-v2.webp" },
   sp: { name: "Серебряная монета", img: "modules/lipatos-three-currencies-global/assets/coins/silver.webp" },
   gp: { name: "Золотая монета", img: "modules/lipatos-three-currencies-global/assets/coins/gold.webp" }
 });
@@ -10,6 +10,7 @@ const wiredActorRoots = new WeakSet();
 const wiredCurrencyIcons = new WeakSet();
 const wiredContainerRoots = new WeakSet();
 const CURRENCY_DRAG_TYPE = "LipatoSCurrency";
+let activeCurrencyDrag = null;
 
 function isDnd5e() {
   return game.system?.id === "dnd5e";
@@ -120,11 +121,23 @@ function decorateCharacterCurrency(app, html) {
   for (const denomination of ["gp", "sp", "cp"]) {
     for (const input of root.querySelectorAll('input[name="system.currency.' + denomination + '"]')) {
       const label = input.closest("label") ?? input.parentElement;
-      const icon = label?.querySelector("i.currency." + denomination);
-      if (!icon) continue;
+      if (!label) continue;
 
+      let icon = label.querySelector("img.lipatos-currency-drag." + denomination);
+      if (!icon) {
+        const oldIcon = label.querySelector("i.currency." + denomination + ", span.currency." + denomination);
+        icon = document.createElement("img");
+        icon.className = "currency " + denomination + " lipatos-currency-drag";
+        icon.src = COINS[denomination].img;
+        icon.alt = COINS[denomination].name;
+        oldIcon?.replaceWith(icon);
+        if (!oldIcon) label.prepend(icon);
+      }
+
+      icon.src = COINS[denomination].img;
       icon.draggable = true;
       icon.dataset.lipatosCurrency = denomination;
+      icon.dataset.actorUuid = actor.uuid;
       icon.dataset.tooltip = "Перетащить " + COINS[denomination].name.toLowerCase() + " в контейнер";
       icon.setAttribute("aria-label", icon.dataset.tooltip);
 
@@ -139,23 +152,36 @@ function decorateCharacterCurrency(app, html) {
           return;
         }
 
-        event.stopPropagation();
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", JSON.stringify({
+        const payload = {
           type: CURRENCY_DRAG_TYPE,
           actorUuid: actor.uuid,
           denomination
-        }));
-        icon.classList.add("lipatos-dragging-currency");
-      });
+        };
+        activeCurrencyDrag = payload;
 
-      icon.addEventListener("dragend", () => icon.classList.remove("lipatos-dragging-currency"));
+        event.stopImmediatePropagation?.();
+        event.stopPropagation();
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", JSON.stringify(payload));
+        event.dataTransfer.setData("application/x-lipatos-currency", JSON.stringify(payload));
+        icon.classList.add("lipatos-dragging-currency");
+      }, true);
+
+      icon.addEventListener("dragend", () => {
+        activeCurrencyDrag = null;
+        icon.classList.remove("lipatos-dragging-currency");
+      }, true);
     }
   }
 }
-
 function currencyDragData(event) {
-  const data = parseDropData(event);
+  let data = null;
+  try {
+    const custom = event.dataTransfer?.getData("application/x-lipatos-currency");
+    if (custom) data = JSON.parse(custom);
+  } catch {}
+  data ??= parseDropData(event);
+  data ??= activeCurrencyDrag;
   return data?.type === CURRENCY_DRAG_TYPE && COINS[data.denomination] ? data : null;
 }
 
@@ -234,9 +260,22 @@ function bindContainerCurrencyDrop(app, html) {
   if (!root || wiredContainerRoots.has(root)) return;
   wiredContainerRoots.add(root);
 
+  root.addEventListener("dragover", event => {
+    if (!activeCurrencyDrag) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    root.classList.add("lipatos-currency-drop-target");
+  }, true);
+
+  root.addEventListener("dragleave", event => {
+    if (!root.contains(event.relatedTarget)) root.classList.remove("lipatos-currency-drop-target");
+  }, true);
+
   root.addEventListener("drop", event => {
     const data = currencyDragData(event);
     if (!data) return;
+    root.classList.remove("lipatos-currency-drop-target");
 
     event.preventDefault();
     event.stopPropagation();
@@ -369,7 +408,27 @@ function bindCharacterDrop(app, html) {
   const root = getRoot(html, app);
   if (!root || wiredActorRoots.has(root)) return;
   wiredActorRoots.add(root);
-  root.addEventListener("drop", event => onCharacterInventoryDrop(event, actor), true);
+
+  root.addEventListener("dragover", event => {
+    if (!activeCurrencyDrag) return;
+    const target = event.target.closest?.(".container[data-item-id]");
+    if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    target.classList.add("lipatos-currency-drop-target");
+  }, true);
+
+  root.addEventListener("dragleave", event => {
+    const target = event.target.closest?.(".container[data-item-id]");
+    target?.classList.remove("lipatos-currency-drop-target");
+  }, true);
+
+  root.addEventListener("drop", event => {
+    const target = event.target.closest?.(".container[data-item-id]");
+    target?.classList.remove("lipatos-currency-drop-target");
+    onCharacterInventoryDrop(event, actor);
+  }, true);
 }
 
 function collectionForContainer(container) {

@@ -24,9 +24,36 @@
   background-image: url("../assets/coins/silver.webp") !important;
 }
 .lipatos-physical-currency-icons section.currency i.currency.cp {
-  background-image: url("../assets/coins/copper.webp") !important;
+  background-image: url("../assets/coins/copper-v2.webp") !important;
 }
 .lipatos-physical-currency-icons section.currency i.currency:active,
 .lipatos-physical-currency-icons section.currency i.currency.lipatos-dragging-currency {
   cursor: grabbing;
+}
+
+.lipatos-physical-currency-icons section.currency img.lipatos-currency-drag {
+  position: absolute;
+  inset: -2px auto auto -2px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border: 0;
+  border-radius: 0;
+  filter: drop-shadow(0 0 1px black);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
+  pointer-events: auto;
+  z-index: 5;
+}
+
+.lipatos-physical-currency-icons section.currency img.lipatos-currency-drag.lipatos-dragging-currency {
+  cursor: grabbing;
+  opacity: 0.72;
+}
+
+.container.lipatos-currency-drop-target,
+.lipatos-physical-coins-container.lipatos-currency-drop-target {
+  outline: 2px solid var(--dnd5e-color-gold, #c9a76a);
+  outline-offset: 2px;
 }
