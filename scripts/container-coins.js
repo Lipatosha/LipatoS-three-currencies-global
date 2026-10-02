@@ -253,23 +253,6 @@ function onContainerSheetDrop(container, _sheet, data) {
   return false;
 }
 
-async function mergeDuplicateCoinStack(item) {
-  const denomination = coinDenomination(item);
-  const containerId = item.system?.container;
-  if (!denomination || !containerId) return;
-
-  const collection = item.actor?.items ?? game.items;
-  const existing = collection?.find?.(other =>
-    other.id !== item.id
-    && other.system?.container === containerId
-    && coinDenomination(other) === denomination
-  );
-  if (!existing) return;
-
-  await existing.update({ "system.quantity": coinQuantity(existing) + coinQuantity(item) });
-  await item.delete();
-}
-
 async function absorbCreatedInventoryCoin(item) {
   if (!item?.isEmbedded || item.actor?.type !== "character") return;
   if (item.system?.container) return;
@@ -392,9 +375,10 @@ Hooks.on("dnd5e.dropItemSheetData", onContainerSheetDrop);
 
 Hooks.on("createItem", (item, _options, userId) => {
   if (!isDnd5e() || userId !== game.user.id || !coinDenomination(item)) return;
+  if (item.system?.container) return;
   setTimeout(() => {
-    const action = item.system?.container ? mergeDuplicateCoinStack(item) : absorbCreatedInventoryCoin(item);
-    Promise.resolve(action).catch(err => console.error(MODULE_ID + " | Ошибка обработки предмета-монеты", err));
+    Promise.resolve(absorbCreatedInventoryCoin(item))
+      .catch(err => console.error(MODULE_ID + " | Ошибка обработки предмета-монеты", err));
   }, 0);
 });
 
