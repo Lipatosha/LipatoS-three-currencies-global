@@ -57,3 +57,14 @@
   outline: 2px solid var(--dnd5e-color-gold, #c9a76a);
   outline-offset: 2px;
 }
+
+/* Force the LipatoS coin artwork anywhere D&D5e renders GP/SP/CP as currency icons. */
+:is(.dnd5e2, .dnd5e2-journal) :is(i, span).currency.gp {
+  background-image: url("../assets/coins/gold.webp") !important;
+}
+:is(.dnd5e2, .dnd5e2-journal) :is(i, span).currency.sp {
+  background-image: url("../assets/coins/silver.webp") !important;
+}
+:is(.dnd5e2, .dnd5e2-journal) :is(i, span).currency.cp {
+  background-image: url("../assets/coins/copper-v2.webp") !important;
+}

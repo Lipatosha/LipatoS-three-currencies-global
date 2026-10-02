@@ -11,6 +11,8 @@ const wiredCurrencyIcons = new WeakSet();
 const wiredContainerRoots = new WeakSet();
 const CURRENCY_DRAG_TYPE = "LipatoSCurrency";
 let activeCurrencyDrag = null;
+let globalCurrencyDragBound = false;
+let currencyTooltipObserver = null;
 
 function isDnd5e() {
   return game.system?.id === "dnd5e";
@@ -138,8 +140,9 @@ function decorateCharacterCurrency(app, html) {
       icon.draggable = true;
       icon.dataset.lipatosCurrency = denomination;
       icon.dataset.actorUuid = actor.uuid;
-      icon.dataset.tooltip = "Перетащить " + COINS[denomination].name.toLowerCase() + " в контейнер";
-      icon.setAttribute("aria-label", icon.dataset.tooltip);
+      icon.dataset.tooltip = COINS[denomination].name;
+      icon.setAttribute("aria-label", COINS[denomination].name);
+      icon.title = COINS[denomination].name;
 
       if (wiredCurrencyIcons.has(icon)) continue;
       wiredCurrencyIcons.add(icon);
@@ -185,6 +188,124 @@ function currencyDragData(event) {
   return data?.type === CURRENCY_DRAG_TYPE && COINS[data.denomination] ? data : null;
 }
 
+
+function currencyDenominationFromElement(element) {
+  if (!(element instanceof Element)) return null;
+  return ["gp", "sp", "cp"].find(denomination => element.classList.contains(denomination)) ?? null;
+}
+
+function decorateCurrencyTooltipElement(element) {
+  const denomination = currencyDenominationFromElement(element);
+  if (!denomination) return;
+  const name = COINS[denomination].name;
+  element.dataset.tooltip = name;
+  element.setAttribute("aria-label", name);
+  element.title = name;
+  if (element instanceof HTMLImageElement && !element.alt) element.alt = name;
+}
+
+function decorateCurrencyTooltips(root=document) {
+  if (!(root instanceof Document || root instanceof Element || root instanceof DocumentFragment)) return;
+  if (root instanceof Element && root.matches(":is(i, span, img).currency:is(.gp, .sp, .cp)")) {
+    decorateCurrencyTooltipElement(root);
+  }
+  for (const element of root.querySelectorAll?.(":is(i, span, img).currency:is(.gp, .sp, .cp)") ?? []) {
+    decorateCurrencyTooltipElement(element);
+  }
+}
+
+function installCurrencyTooltipObserver() {
+  if (currencyTooltipObserver || !document.body) return;
+  decorateCurrencyTooltips(document);
+  currencyTooltipObserver = new MutationObserver(mutations => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof Element) decorateCurrencyTooltips(node);
+      }
+    }
+  });
+  currencyTooltipObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function applicationFromElement(element) {
+  const application = element?.closest?.(".application");
+  if (!application?.id) return null;
+  return foundry.applications.instances.get(application.id) ?? null;
+}
+
+function resolveContainerDropTarget(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return null;
+
+  const containerElement = target.closest(".container[data-item-id]");
+  if (containerElement) {
+    try {
+      const uuid = containerElement.dataset.uuid;
+      const item = uuid && globalThis.fromUuidSync ? fromUuidSync(uuid, { strict: false }) : null;
+      if (item?.documentName === "Item" && item.type === "container") return item;
+    } catch {}
+
+    const app = applicationFromElement(containerElement);
+    const actor = actorFromApp(app);
+    const item = actor?.items?.get(containerElement.dataset.itemId);
+    if (item?.type === "container") return item;
+  }
+
+  const app = applicationFromElement(target);
+  const document = getDocument(app);
+  if (document?.documentName === "Item" && document.type === "container") return document;
+
+  return null;
+}
+
+function clearCurrencyDropTargets() {
+  for (const element of document.querySelectorAll(".lipatos-currency-drop-target")) {
+    element.classList.remove("lipatos-currency-drop-target");
+  }
+}
+
+function installGlobalCurrencyDrag() {
+  if (globalCurrencyDragBound) return;
+  globalCurrencyDragBound = true;
+
+  document.addEventListener("dragover", event => {
+    if (!activeCurrencyDrag) return;
+    const container = resolveContainerDropTarget(event);
+    if (!container) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation?.();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+
+    clearCurrencyDropTargets();
+    const target = event.target instanceof Element
+      ? (event.target.closest(".container[data-item-id]") ?? event.target.closest(".application"))
+      : null;
+    target?.classList.add("lipatos-currency-drop-target");
+  }, true);
+
+  document.addEventListener("drop", event => {
+    const data = currencyDragData(event);
+    if (!data) return;
+
+    const container = resolveContainerDropTarget(event);
+    if (!container) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation?.();
+    event.stopPropagation();
+    clearCurrencyDropTargets();
+
+    void moveCurrencyToContainer(data, container).catch(err => {
+      console.error(MODULE_ID + " | Ошибка глобального переноса валюты в контейнер", err);
+      ui.notifications.error("LipatoS: не удалось переместить монеты в контейнер.");
+    });
+  }, true);
+
+  document.addEventListener("dragend", clearCurrencyDropTargets, true);
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -194,7 +315,6 @@ function escapeHtml(value) {
 async function promptCurrencyAmount(actor, denomination, container) {
   const maximum = Math.max(0, Math.floor(Number(actor.system?.currency?.[denomination] ?? 0)));
   if (!maximum) return 0;
-  if (maximum === 1) return 1;
 
   const result = await foundry.applications.api.DialogV2.prompt({
     rejectClose: false,
@@ -598,12 +718,14 @@ Hooks.on("renderApplicationV2", (app, html) => {
   bindCharacterDrop(app, html);
   decorateCharacterCurrency(app, html);
   bindContainerCurrencyDrop(app, html);
+  decorateCurrencyTooltips(getRoot(html, app) ?? document);
 });
 Hooks.on("renderApplication", (app, html) => {
   hideContainerCurrency(app, html);
   bindCharacterDrop(app, html);
   decorateCharacterCurrency(app, html);
   bindContainerCurrencyDrop(app, html);
+  decorateCurrencyTooltips(getRoot(html, app) ?? document);
 });
 Hooks.on("renderItemSheet", (app, html) => {
   hideContainerCurrency(app, html);
@@ -622,6 +744,12 @@ Hooks.on("createItem", (item, _options, userId) => {
     Promise.resolve(absorbCreatedInventoryCoin(item))
       .catch(err => console.error(MODULE_ID + " | Ошибка обработки предмета-монеты", err));
   }, 0);
+});
+
+Hooks.once("ready", () => {
+  if (!isDnd5e()) return;
+  installGlobalCurrencyDrag();
+  installCurrencyTooltipObserver();
 });
 
 Hooks.once("ready", async () => {
