@@ -1,8 +1,8 @@
 {
   "id": "lipatos-three-currencies-global",
   "title": "LipatoS - Три валюты D&D5e",
-  "description": "Полностью отключает электрум (EP) и платину (PP) в D&D5e. Остаются только медь (CP), серебро (SP) и золото (GP). Существующие EP и PP автоматически конвертируются в SP и GP.",
-  "version": "3.0.1",
+  "description": "Три валюты D&D5e (CP, SP, GP), физические предметы-монеты для контейнеров и автоматическое зачисление монет в валюту персонажа при переносе в его инвентарь.",
+  "version": "4.0.0",
   "authors": [
     {
       "name": "LipatoS"
@@ -19,18 +19,21 @@
         "id": "dnd5e",
         "type": "system",
         "compatibility": {
-          "minimum": "6.0.0",
+          "minimum": "6.0.5",
           "verified": "6.0.5"
         }
       }
     ]
   },
   "esmodules": [
-    "scripts/three-currencies.js"
+    "scripts/three-currencies.js",
+    "scripts/container-coins.js"
   ],
   "styles": [
-    "styles/three-currencies.css"
+    "styles/three-currencies.css",
+    "styles/container-coins.css"
   ],
-  "manifest": "https://raw.githubusercontent.com/Lipatosha/LipatoS-three-currencies-global/main/module.json",
-  "download": "https://raw.githubusercontent.com/Lipatosha/LipatoS-three-currencies-global/main/lipatos-three-currencies-global-v3.0.1.zip"
+  "manifest": "https://github.com/Lipatosha/LipatoS-three-currencies-global/releases/latest/download/module.json",
+  "download": "https://github.com/Lipatosha/LipatoS-three-currencies-global/releases/latest/download/lipatos-three-currencies-global.zip",
+  "url": "https://github.com/Lipatosha/LipatoS-three-currencies-global"
 }
