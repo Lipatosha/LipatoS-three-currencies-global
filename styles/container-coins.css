@@ -1,0 +1,4 @@
+.lipatos-physical-coins-container dnd5e-inventory > section.currency,
+.lipatos-physical-coins-container dnd5e-inventory section.currency {
+  display: none !important;
+}
