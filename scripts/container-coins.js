@@ -110,6 +110,79 @@ function reorderInventoryColumns(root) {
   for (const row of root.querySelectorAll(".item-row")) reorder(row);
 }
 
+
+function wrapDirectColumnText(cell) {
+  let primary = cell.querySelector(":scope > .lps-column-primary");
+  if (primary) return primary;
+
+  const textNodes = Array.from(cell.childNodes)
+    .filter(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+
+  if (!textNodes.length) return null;
+
+  primary = document.createElement("span");
+  primary.className = "lps-column-primary";
+  primary.textContent = textNodes.map(node => node.textContent.trim()).join(" ");
+
+  for (const node of textNodes) node.remove();
+  cell.prepend(primary);
+  return primary;
+}
+
+function centerInventoryPrimaryValues(root) {
+  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
+
+  // Quantity: the number itself is the center point. Minus and plus stay on its sides
+  // and no longer affect where the number sits under the header.
+  for (const cell of root.querySelectorAll(".item-detail[data-column-id='quantity']")) {
+    cell.classList.add("lps-primary-centered", "lps-primary-quantity");
+  }
+
+  // Weight: center only the numeric value and show the weight icon after it.
+  for (const cell of root.querySelectorAll(".item-detail[data-column-id='weight']")) {
+    const primary = wrapDirectColumnText(cell);
+    if (!primary) continue;
+
+    cell.classList.add("lps-primary-centered", "lps-primary-with-icon");
+    const icon = cell.querySelector(":scope > i.fa-weight-hanging");
+    if (icon) {
+      icon.classList.add("lps-column-accessory");
+      cell.append(icon);
+    }
+  }
+
+  // Price: the amount is centered under "Цена"; the currency icon is accessory
+  // and therefore does not shift the number to the left.
+  for (const cell of root.querySelectorAll(".item-detail[data-column-id='price']")) {
+    if (cell.classList.contains("lipatos-empty-coin-price")) continue;
+    const primary = wrapDirectColumnText(cell);
+    if (!primary) continue;
+
+    cell.classList.add("lps-primary-centered", "lps-primary-with-icon");
+    const icon = cell.querySelector(":scope > i.currency");
+    if (icon) {
+      icon.classList.add("lps-column-accessory");
+      cell.append(icon);
+    }
+  }
+
+  // Damage/healing formula: center the formula itself; damage-type icon is accessory.
+  for (const row of root.querySelectorAll(".item-detail[data-column-id='formula'] > .row")) {
+    const formula = row.querySelector(":scope > .formula");
+    if (!formula) continue;
+    row.classList.add("lps-formula-primary-centered");
+    formula.classList.add("lps-column-primary");
+    const accessory = Array.from(row.children).find(child => child !== formula);
+    accessory?.classList.add("lps-column-accessory");
+  }
+
+  // Uses / charges have no decorative icon in the normal numeric state, so center
+  // their complete numeric expression (for example 2/3) as one group.
+  for (const cell of root.querySelectorAll(".item-detail.item-uses, .item-detail.item-charges")) {
+    cell.classList.add("lps-primary-uses");
+  }
+}
+
 function inventoryItemById(app, itemId) {
   if (!itemId) return null;
   const actor = actorFromApp(app);
@@ -146,6 +219,7 @@ function decorateInventoryLayout(app, html) {
   if (!root) return;
   reorderInventoryColumns(root);
   blankCoinPrices(app, root);
+  centerInventoryPrimaryValues(root);
 }
 
 async function normalizePhysicalCoinPrices() {
