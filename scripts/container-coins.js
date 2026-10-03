@@ -14,7 +14,7 @@ let activeCurrencyDrag = null;
 let globalCurrencyDragBound = false;
 let currencyTooltipObserver = null;
 let amountPresetBound = false;
-const inventoryCenterObservers = new WeakMap();
+const inventoryHeaderObservers = new WeakMap();
 
 function isDnd5e() {
   return game.system?.id === "dnd5e";
@@ -112,75 +112,43 @@ function reorderInventoryColumns(root) {
 }
 
 
-function wrapDirectColumnText(cell) {
-  let primary = cell.querySelector(":scope > .lps-column-primary");
-  if (primary) return primary;
+function wrapDirectValueText(cell) {
+  let value = cell.querySelector(":scope > .lps-value-text");
+  if (value) return value;
 
-  const textNodes = Array.from(cell.childNodes)
+  const nodes = Array.from(cell.childNodes)
     .filter(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
-  if (!textNodes.length) return null;
+  if (!nodes.length) return null;
 
-  primary = document.createElement("span");
-  primary.className = "lps-column-primary";
-  primary.textContent = textNodes.map(node => node.textContent.trim()).join(" ");
-  for (const node of textNodes) node.remove();
-  cell.prepend(primary);
-  return primary;
+  value = document.createElement("span");
+  value.className = "lps-value-text";
+  value.textContent = nodes.map(node => node.textContent.trim()).join(" ");
+  for (const node of nodes) node.remove();
+  cell.prepend(value);
+  return value;
 }
 
-function primaryElementForColumn(cell, id) {
-  if (id === "quantity") {
-    return cell.querySelector(":scope > input, :scope > .value");
+function prepareWeightValue(cell) {
+  const value = wrapDirectValueText(cell);
+  const icon = cell.querySelector(":scope > i.fa-weight-hanging");
+  if (value && icon) {
+    value.after(icon);
+    icon.classList.add("lps-weight-after");
   }
-  if (id === "formula") {
-    return cell.querySelector(":scope > .row > .formula");
-  }
-  if (id === "roll") {
-    return cell.querySelector(":scope > .stacked > .value, :scope > .value")
-      ?? wrapDirectColumnText(cell);
-  }
-  if (id === "uses" || id === "charges") {
-    return cell.querySelector(":scope > .value, :scope > input")
-      ?? wrapDirectColumnText(cell);
-  }
-  return wrapDirectColumnText(cell);
+  return value;
 }
 
-function accessoryForColumn(cell, id) {
-  if (id === "weight") return cell.querySelector(":scope > i.fa-weight-hanging");
-  if (id === "price") return cell.querySelector(":scope > i.currency");
-  if (id === "formula") {
-    const row = cell.querySelector(":scope > .row");
-    const primary = row?.querySelector(":scope > .formula");
-    return row ? Array.from(row.children).find(child => child !== primary) ?? null : null;
-  }
+function primaryValueElement(cell, id) {
+  if (id === "quantity") return cell.querySelector(":scope > input, :scope > .value");
+  if (id === "weight") return prepareWeightValue(cell);
+  if (id === "price") return wrapDirectValueText(cell);
+  if (id === "roll") return cell.querySelector(".stacked > .value, :scope > .value") ?? wrapDirectValueText(cell);
+  if (id === "formula") return cell.querySelector(":scope > .row > .formula");
+  if (id === "uses" || id === "charges") return cell.querySelector(":scope > .value, :scope > input") ?? wrapDirectValueText(cell);
   return null;
 }
 
-function prepareInventoryPrimaryValues(root) {
-  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
-  const ids = ["quantity", "weight", "price", "roll", "formula", "uses", "charges"];
-
-  for (const id of ids) {
-    for (const cell of root.querySelectorAll(".item-detail[data-column-id='" + id + "']")) {
-      if (id === "price" && cell.classList.contains("lipatos-empty-coin-price")) continue;
-
-      const primary = primaryElementForColumn(cell, id);
-      if (!primary) continue;
-
-      cell.classList.add("lps-header-anchored-value");
-      primary.classList.add("lps-column-primary");
-
-      const accessory = accessoryForColumn(cell, id);
-      if (accessory) {
-        accessory.classList.add("lps-column-accessory");
-        if (id === "weight") cell.append(accessory);
-      }
-    }
-  }
-}
-
-function alignInventoryValuesToHeaders(root) {
+function alignInventoryHeadersToValues(root) {
   if (!(root instanceof Element)) return;
 
   for (const section of root.querySelectorAll(".items-section")) {
@@ -189,47 +157,37 @@ function alignInventoryValuesToHeaders(root) {
 
     for (const id of ["quantity", "weight", "price", "roll", "formula", "uses", "charges"]) {
       const headerCell = header.querySelector(":scope > [data-column-id='" + id + "']");
-      if (!headerCell || headerCell.classList.contains("hidden-width") || headerCell.classList.contains("hidden-column")) continue;
+      if (!headerCell) continue;
+      headerCell.style.transform = "";
 
-      const headerRect = headerCell.getBoundingClientRect();
-      if (!headerRect.width) continue;
-      const headerCenter = headerRect.left + headerRect.width / 2;
-
-      for (const cell of section.querySelectorAll(".item-detail[data-column-id='" + id + "']")) {
-        if (!cell.classList.contains("lps-header-anchored-value")) continue;
-        if (cell.classList.contains("hidden-width") || cell.classList.contains("hidden-column")) continue;
-
-        const cellRect = cell.getBoundingClientRect();
-        if (!cellRect.width) continue;
-
-        const centerX = headerCenter - cellRect.left;
-        cell.style.setProperty("--lps-center-x", centerX.toFixed(2) + "px");
-
-        const primary = primaryElementForColumn(cell, id);
-        const accessory = accessoryForColumn(cell, id);
-        if (primary && accessory) {
-          const primaryWidth = primary.getBoundingClientRect().width;
-          cell.style.setProperty("--lps-accessory-x", (centerX + primaryWidth / 2 + 6).toFixed(2) + "px");
-        }
+      const rows = Array.from(section.querySelectorAll(".item-detail[data-column-id='" + id + "']"))
+        .filter(cell => !cell.classList.contains("hidden-width") && !cell.classList.contains("hidden-column"));
+      let primary = null;
+      for (const cell of rows) {
+        primary = primaryValueElement(cell, id);
+        if (primary?.getBoundingClientRect().width) break;
       }
+      if (!primary) continue;
+
+      const h = headerCell.getBoundingClientRect();
+      const v = primary.getBoundingClientRect();
+      if (!h.width || !v.width) continue;
+
+      const delta = (v.left + v.width / 2) - (h.left + h.width / 2);
+      headerCell.style.transform = "translateX(" + delta.toFixed(2) + "px)";
     }
   }
 }
 
-function scheduleInventoryValueAlignment(root) {
+function scheduleInventoryHeaderAlignment(root) {
   if (!(root instanceof Element)) return;
-
-  const run = () => {
-    prepareInventoryPrimaryValues(root);
-    alignInventoryValuesToHeaders(root);
-  };
-
+  const run = () => alignInventoryHeadersToValues(root);
   requestAnimationFrame(() => requestAnimationFrame(run));
 
-  if (!inventoryCenterObservers.has(root)) {
+  if (!inventoryHeaderObservers.has(root)) {
     const observer = new ResizeObserver(() => requestAnimationFrame(run));
     observer.observe(root);
-    inventoryCenterObservers.set(root, observer);
+    inventoryHeaderObservers.set(root, observer);
   }
 }
 
@@ -269,7 +227,7 @@ function decorateInventoryLayout(app, html) {
   if (!root) return;
   reorderInventoryColumns(root);
   blankCoinPrices(app, root);
-  scheduleInventoryValueAlignment(root);
+  scheduleInventoryHeaderAlignment(root);
 }
 
 async function normalizePhysicalCoinPrices() {

@@ -81,79 +81,10 @@
   content: none !important;
 }
 
-/* Header-anchored inventory alignment.
-   The actual number/formula is aligned to the real center of its header cell.
-   Icons and controls are positioned independently and cannot shift that center. */
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value:not(.hidden-width):not(.hidden-column) {
-  position: relative !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
 
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value > .lps-column-primary,
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value > input.lps-column-primary,
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value > .stacked > .lps-column-primary {
-  position: absolute !important;
-  left: var(--lps-center-x) !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  margin: 0 !important;
-  text-align: center !important;
-  white-space: nowrap !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="quantity"] {
-  display: block !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="quantity"] > [data-action="decrease"] {
-  position: absolute !important;
-  left: calc(var(--lps-center-x) - 29px) !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  margin: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="quantity"] > [data-action="increase"] {
-  position: absolute !important;
-  left: calc(var(--lps-center-x) + 29px) !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  margin: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value > .lps-column-accessory {
-  position: absolute !important;
-  left: var(--lps-accessory-x) !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="formula"] > .row {
-  position: static !important;
-  display: contents !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="formula"] > .row > .lps-column-primary {
-  position: absolute !important;
-  left: var(--lps-center-x) !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  white-space: nowrap !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="formula"] > .row > .lps-column-accessory {
-  position: absolute !important;
-  left: var(--lps-accessory-x) !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin: 0 !important;
-}
-
-/* Keep a visible gap between every centered value and its decorative icon. */
-.dnd5e2 .items-list .item-detail[data-column-id="weight"] > i.fa-weight-hanging,
-.dnd5e2 .items-list .item-detail[data-column-id="price"] > i.currency,
-.dnd5e2 .items-list .item-detail[data-column-id="formula"] .lps-column-accessory {
-  margin-left: 0 !important;
+/* Safe alignment: item rows keep the native D&D5e layout.
+   Only column headers move to the real center of the displayed value. */
+.dnd5e2 .items-list .item-detail[data-column-id="weight"] > .lps-weight-after {
+  margin-left: .25rem;
+  margin-right: 0;
 }
