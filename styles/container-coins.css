@@ -78,14 +78,13 @@
 }
 
 /* ==========================================================================
-   LipatoS inventory geometry — one deterministic first-paint layout
+   LipatoS inventory geometry — compact first-paint layout
    ========================================================================== */
 
 .dnd5e2 .items-list :is(.item-header,.item-detail)[data-column-id] {
   box-sizing: border-box;
 }
 
-/* Identical header/row widths. */
 .dnd5e2 .items-list :is(.item-header,.item-detail):is(
   [data-column-id="quantity"],
   [data-column-id="weight"],
@@ -111,74 +110,99 @@
   max-width: 96px !important;
 }
 
-/* Header text is centered in the exact same box as the values. */
 .dnd5e2 .items-list .items-header > .item-header[data-column-id] {
   justify-content: center !important;
   text-align: center !important;
   padding-inline: 0 !important;
 }
 
-/* Quantity: symmetric - | value | +. */
+/* Quantity: the number owns the center. Buttons sit close to it and do not move it. */
 .dnd5e2 .items-list .lps-quantity-column {
-  display: grid !important;
-  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  position: relative;
+  display: flex !important;
   align-items: center;
-  justify-items: center;
+  justify-content: center !important;
   padding-inline: 0 !important;
-  gap: 0 !important;
 }
-.dnd5e2 .items-list .lps-quantity-column > .lps-qty-left { grid-column: 1; }
-.dnd5e2 .items-list .lps-quantity-column > .lps-qty-value {
-  grid-column: 2;
+.dnd5e2 .items-list .lps-qty-anchor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 100%;
+}
+.dnd5e2 .items-list .lps-qty-value {
   width: 28px !important;
   min-width: 28px !important;
   padding: 0 !important;
   margin: 0 !important;
   text-align: center !important;
 }
-.dnd5e2 .items-list .lps-quantity-column > .lps-qty-right { grid-column: 3; }
+.dnd5e2 .items-list .lps-qty-minus,
+.dnd5e2 .items-list .lps-qty-plus {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0 !important;
+}
+.dnd5e2 .items-list .lps-qty-minus {
+  right: 100%;
+  margin-right: 5px !important;
+}
+.dnd5e2 .items-list .lps-qty-plus {
+  left: 100%;
+  margin-left: 5px !important;
+}
 
-/* Weight / Price: the number owns the center.
-   Left mirror slot cancels the icon slot on the right. */
-.dnd5e2 .items-list .lps-value-icon-column {
-  display: grid !important;
-  grid-template-columns: 18px minmax(0, 1fr) 18px;
+/* Weight, Price and Formula:
+   the visible number/formula is exactly centered.
+   Its icon is absolutely attached 3px to the right, so there is no large fake gap. */
+.dnd5e2 .items-list .lps-centered-column {
+  display: flex !important;
   align-items: center;
-  justify-items: center;
+  justify-content: center !important;
   padding-inline: 0 !important;
-  gap: 0 !important;
 }
-.dnd5e2 .items-list .lps-value-icon-column > .lps-mirror-slot {
-  grid-column: 1;
-  width: 18px;
-  height: 18px;
-}
-.dnd5e2 .items-list .lps-value-icon-column > .lps-main-value {
-  grid-column: 2;
-  justify-self: center;
-  white-space: nowrap;
-  line-height: 1;
-}
-.dnd5e2 .items-list .lps-value-icon-column > .lps-icon-slot {
-  grid-column: 3;
-  width: 18px;
-  height: 18px;
+.dnd5e2 .items-list .lps-center-anchor {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  padding-left: 4px;
-  box-sizing: border-box;
+  justify-content: center;
+  min-width: 0;
+  white-space: nowrap;
+}
+.dnd5e2 .items-list .lps-center-anchor > .lps-main-value {
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
+}
+.dnd5e2 .items-list .lps-inline-icon {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-/* Required order: number, then weight icon. */
-.dnd5e2 .items-list .lps-weight-icon-slot i {
+/* Weight: number → icon. */
+.dnd5e2 .items-list .lps-weight-inline-icon i {
   margin: 0 !important;
   font-size: var(--font-size-9);
   color: var(--color-text-tertiary);
 }
 
-/* GP/SP/CP: one identical visual box. */
-.dnd5e2 .items-list .lps-price-icon-slot i.currency {
+/* Price: GP/SP/CP use the same 12×12 icon box and sit 3px from the number. */
+.dnd5e2 .items-list .lps-price-inline-icon {
+  width: 12px;
+  height: 12px;
+}
+.dnd5e2 .items-list .lps-price-inline-icon i.currency {
   display: inline-block !important;
   flex: none !important;
   width: 12px !important;
@@ -198,78 +222,47 @@
   padding-inline: 0 !important;
 }
 
-/* Formula: formula text owns the exact center; damage icon is a right accessory. */
-.dnd5e2 .items-list .lps-formula-column {
-  display: flex !important;
-  align-items: center;
-  justify-content: center !important;
-  padding-inline: 0 !important;
+/* Formula icon is compact and does not participate in formula centering. */
+.dnd5e2 .items-list .lps-damage-inline-icon {
+  width: 14px;
+  height: 14px;
 }
-.dnd5e2 .items-list .lps-formula-layout {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 18px;
-  align-items: center;
-  justify-items: center;
-  width: 100%;
-  min-width: 0;
-}
-.dnd5e2 .items-list .lps-formula-layout > .lps-mirror-slot {
-  grid-column: 1;
-  width: 18px;
-  height: 18px;
-}
-.dnd5e2 .items-list .lps-formula-layout > .formula {
-  grid-column: 2;
-  justify-self: center;
-  white-space: nowrap;
-}
-.dnd5e2 .items-list .lps-formula-layout > .lps-icon-slot {
-  grid-column: 3;
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding-left: 3px;
-  box-sizing: border-box;
-}
-.dnd5e2 .items-list .lps-damage-icon-slot dnd5e-icon {
+.dnd5e2 .items-list .lps-damage-inline-icon dnd5e-icon {
   --icon-size: 14px;
   width: 14px;
   height: 14px;
 }
 
-/* Charges / Uses: center the complete 1/1 group. */
+/* Charges / Uses: center the whole visual expression as one compact group. */
 .dnd5e2 .items-list .lps-uses-column {
+  display: flex !important;
+  align-items: center;
   justify-content: center !important;
   text-align: center !important;
   padding-inline: 0 !important;
 }
 .dnd5e2 .items-list .lps-uses-group {
-  display: inline-grid;
-  grid-template-columns: 24px auto 24px;
+  display: inline-flex;
   align-items: center;
-  justify-items: center;
+  justify-content: center;
+  gap: 1px;
+  white-space: nowrap;
 }
-.dnd5e2 .items-list .lps-uses-group > :is(.value,input) {
-  grid-column: 1;
-  width: 24px !important;
-  min-width: 24px !important;
-  padding: 0 !important;
+.dnd5e2 .items-list .lps-uses-group > :is(.value,.max) {
+  width: auto !important;
+  min-width: 0 !important;
   margin: 0 !important;
-  text-align: right !important;
+  padding: 0 !important;
+}
+.dnd5e2 .items-list .lps-uses-group > input {
+  width: 20px !important;
+  min-width: 20px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: center !important;
 }
 .dnd5e2 .items-list .lps-uses-group > .separator {
-  grid-column: 2;
-  padding: 0 1px;
   margin: 0 !important;
-  color: var(--dnd5e-color-gold);
-}
-.dnd5e2 .items-list .lps-uses-group > .max {
-  grid-column: 3;
-  width: 24px !important;
-  min-width: 24px !important;
   padding: 0 !important;
-  margin: 0 !important;
-  text-align: left !important;
+  color: var(--dnd5e-color-gold);
 }
