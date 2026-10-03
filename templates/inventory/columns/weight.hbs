@@ -1,6 +1,9 @@
-<div class="item-detail item-weight {{#unless ctx.totalWeight}}empty{{/unless}}" data-column-id="weight">
+<div class="item-detail item-weight lps-balanced-column {{#unless ctx.totalWeight}}empty{{/unless}}" data-column-id="weight">
     {{#if ctx.totalWeight}}
-    <span class="lps-column-value">{{ ctx.totalWeight }}</span>
-    <i class="fa-solid fa-weight-hanging" inert></i>
+    <span class="lps-balanced-value">
+        <span class="lps-balance-spacer" aria-hidden="true"></span>
+        <span class="lps-column-value">{{ ctx.totalWeight }}</span>
+        <i class="fa-solid fa-weight-hanging lps-column-icon" inert></i>
+    </span>
     {{/if}}
 </div>
