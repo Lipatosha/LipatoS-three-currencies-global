@@ -122,13 +122,22 @@ function configureInventoryColumns(columns) {
 }
 
 function configureInventorySheetContext(sheet, partId, context) {
-  if (!isDnd5e() || partId !== "inventory") return;
-  const actor = sheet?.actor ?? sheet?.document;
-  if (actor?.documentName !== "Actor" || actor.type !== "character") return;
+  if (!isDnd5e()) return;
 
-  for (const section of context?.sections ?? []) {
+  const actor = sheet?.actor ?? (sheet?.document?.documentName === "Actor" ? sheet.document : sheet?.document?.actor);
+  const isCharacterInventory = partId === "inventory"
+    && actor?.documentName === "Actor"
+    && actor.type === "character";
+  const isContainerContents = partId === "contents"
+    && sheet?.document?.documentName === "Item"
+    && sheet.document.type === "container";
+
+  if (!isCharacterInventory && !isContainerContents) return;
+
+  const sections = isCharacterInventory ? (context?.sections ?? []) : (context?.inventory ?? []);
+  for (const section of sections) {
     configureInventoryColumns(section.columns);
-    if (section.id === "weapons") {
+    if (isCharacterInventory && section.id === "weapons") {
       section.dataset ??= {};
       section.dataset.columnMinWidth = "250";
     }
