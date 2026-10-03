@@ -97,7 +97,8 @@ function denominationLabel(denomination) {
 
 const INVENTORY_PARTIALS = Object.freeze({
   "lipatos.currency.weight": "modules/lipatos-three-currencies-global/templates/inventory/columns/weight.hbs",
-  "lipatos.currency.price": "modules/lipatos-three-currencies-global/templates/inventory/columns/price.hbs"
+  "lipatos.currency.price": "modules/lipatos-three-currencies-global/templates/inventory/columns/price.hbs",
+  "lipatos.currency.formula": "modules/lipatos-three-currencies-global/templates/inventory/columns/formula.hbs"
 });
 
 function configureInventoryColumns(columns) {
@@ -107,7 +108,7 @@ function configureInventoryColumns(columns) {
     weight:   { order: 200, width: 76, priority: 700, template: "lipatos.currency.weight" },
     price:    { order: 300, width: 76, priority: 600, template: "lipatos.currency.price" },
     roll:     { order: 400, priority: 200 },
-    formula:  { order: 500, priority: 100 },
+    formula:  { order: 500, priority: 100, template: "lipatos.currency.formula" },
     charges:  { order: 600, width: 76, priority: 900 },
     uses:     { order: 600, width: 76, priority: 900 },
     controls: { order: 1000, priority: 1000 }
