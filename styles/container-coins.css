@@ -85,3 +85,44 @@
   justify-content: center;
   padding-right: 0;
 }
+
+/* Keep the three economy columns perfectly aligned across every inventory section. */
+.dnd5e2 .items-section :is(.item-header, .item-detail)[data-column-id="quantity"] {
+  flex: 0 0 70px !important;
+  width: 70px !important;
+  min-width: 70px !important;
+  max-width: 70px !important;
+  box-sizing: border-box;
+  justify-content: center !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dnd5e2 .items-section :is(.item-header, .item-detail)[data-column-id="weight"] {
+  flex: 0 0 60px !important;
+  width: 60px !important;
+  min-width: 60px !important;
+  max-width: 60px !important;
+  box-sizing: border-box;
+  justify-content: center !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dnd5e2 .items-section :is(.item-header, .item-detail)[data-column-id="price"] {
+  flex: 0 0 80px !important;
+  width: 80px !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
+  box-sizing: border-box;
+  justify-content: center !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dnd5e2 .items-section .item-detail[data-column-id="quantity"] {
+  gap: .2rem;
+}

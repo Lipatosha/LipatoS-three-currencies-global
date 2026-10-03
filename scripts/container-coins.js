@@ -1,8 +1,8 @@
 const MODULE_ID = "lipatos-three-currencies-global";
 const COINS = Object.freeze({
-  cp: { name: "Медная монета", img: "modules/lipatos-three-currencies-global/assets/coins/copper-v2.webp" },
-  sp: { name: "Серебряная монета", img: "modules/lipatos-three-currencies-global/assets/coins/silver.webp" },
-  gp: { name: "Золотая монета", img: "modules/lipatos-three-currencies-global/assets/coins/gold.webp" }
+  cp: { name: "Медь", img: "modules/lipatos-three-currencies-global/assets/coins/copper-v2.webp" },
+  sp: { name: "Серебро", img: "modules/lipatos-three-currencies-global/assets/coins/silver.webp" },
+  gp: { name: "Золото", img: "modules/lipatos-three-currencies-global/assets/coins/gold.webp" }
 });
 
 const actorQueues = new Map();
@@ -60,7 +60,7 @@ function coinData(denomination, quantity=1, options={}) {
     ownership: template ? { default: 0 } : undefined,
     system: {
       description: {
-        value: "<p>Физическая " + coin.name.toLowerCase()
+        value: "<p>Физическая валюта: " + coin.name
           + ". При переносе из контейнера в инвентарь персонажа автоматически зачисляется в счётчик "
           + denomination.toUpperCase() + ".</p>"
       },
