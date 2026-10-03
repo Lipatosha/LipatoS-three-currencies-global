@@ -94,28 +94,29 @@
 }
 
 .dnd5e2 .items-list .item-detail[data-column-id="quantity"]:not(.hidden-width):not(.hidden-column){
- display:grid!important;grid-template-columns:1fr auto 1fr;align-items:center;gap:0;padding-left:0!important;padding-right:0!important
+ display:grid!important;grid-template-columns:24px auto 24px;grid-template-rows:1fr;justify-content:center;align-items:center;gap:0;padding-left:0!important;padding-right:0!important
 }
-.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>:is(input,.value){grid-column:2;justify-self:center;margin:0;text-align:center}
-.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="decrease"]{grid-column:1;justify-self:end;margin-right:5px}
-.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="increase"]{grid-column:3;justify-self:start;margin-left:5px}
+.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>:is(input,.value){grid-column:2;grid-row:1;justify-self:center;margin:0;text-align:center}
+.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="decrease"]{grid-column:1;grid-row:1;justify-self:center;margin:0}
+.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="increase"]{grid-column:3;grid-row:1;justify-self:center;margin:0}
 
-.dnd5e2 .items-list .item-detail:is([data-column-id="weight"],[data-column-id="price"]){
- display:grid!important;grid-template-columns:1fr auto 1fr;align-items:center;gap:0;padding-left:0!important;padding-right:0!important
+.dnd5e2 .items-list .item-detail.lps-balanced-column{
+ display:flex!important;align-items:center;justify-content:center!important;padding-left:0!important;padding-right:0!important
 }
-.dnd5e2 .items-list .item-detail:is([data-column-id="weight"],[data-column-id="price"])>.lps-column-value{
- grid-column:2;justify-self:center;white-space:nowrap
+.dnd5e2 .items-list .item-detail.lps-balanced-column>.lps-balanced-value{
+ display:grid;grid-template-columns:18px auto 18px;grid-template-rows:1fr;justify-content:center;align-items:center;width:100%;min-width:0
 }
-.dnd5e2 .items-list .item-detail:is([data-column-id="weight"],[data-column-id="price"])>:is(i.fa-weight-hanging,i.currency){
- grid-column:3;justify-self:start;margin-left:5px
-}
+.dnd5e2 .items-list .lps-balanced-value>.lps-balance-spacer{grid-column:1;grid-row:1;width:18px}
+.dnd5e2 .items-list .lps-balanced-value>.lps-column-value{grid-column:2;grid-row:1;justify-self:center;white-space:nowrap;line-height:1}
+.dnd5e2 .items-list .lps-balanced-value>.lps-column-icon{grid-column:3;grid-row:1;justify-self:start;margin-left:4px}
 
 .dnd5e2 .items-list .item-detail[data-column-id="roll"]{justify-content:center!important;text-align:center!important}
 .dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row{
- display:grid!important;grid-template-columns:1fr auto 1fr;align-items:center;width:100%;gap:0
+ display:grid!important;grid-template-columns:18px auto 18px;grid-template-rows:1fr;justify-content:center;align-items:center;width:100%;gap:0
 }
-.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>.formula{grid-column:2;justify-self:center;white-space:nowrap}
-.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>:not(.formula){grid-column:3;justify-self:start;margin-left:4px}
+.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row::before{content:"";grid-column:1;grid-row:1;width:18px}
+.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>.formula{grid-column:2;grid-row:1;justify-self:center;white-space:nowrap}
+.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>:not(.formula){grid-column:3;grid-row:1;justify-self:start;margin-left:4px}
 
 .dnd5e2 .items-list :is(.item-header,.item-detail):is([data-column-id="charges"],[data-column-id="uses"]){
  justify-content:center!important;text-align:center!important;padding-left:0!important;padding-right:0!important
