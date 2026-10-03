@@ -89,21 +89,46 @@
   margin-right: 0;
 }
 
-/* Comfortable spacing between inventory data columns.
-   Applied equally to headers and row cells so the native D&D5e geometry stays consistent. */
-.dnd5e2 .items-list :is(.items-header, .item-row) > [data-column-id] {
-  margin-left: 4px;
-  margin-right: 4px;
-}
-
-/* Uses/charges contain plain numeric text or an em dash, so center that content in its own cell. */
-.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) {
-  justify-content: center !important;
-  text-align: center !important;
-}
-
 /* Weight is always rendered as: number, then icon, with a stable readable gap. */
 .dnd5e2 .items-list .item-detail[data-column-id="weight"] > .lps-weight-after {
   margin-left: 5px !important;
   margin-right: 0 !important;
+}
+
+/* Equal rhythm for the economy columns: Quantity, Weight, Price and Uses/Charges
+   all occupy the same width in both headers and item rows. */
+.dnd5e2 .items-list :is(.items-header, .item-row) > :is(
+  [data-column-id="quantity"],
+  [data-column-id="weight"],
+  [data-column-id="price"],
+  [data-column-id="uses"],
+  [data-column-id="charges"]
+) {
+  flex: 0 0 76px !important;
+  width: 76px !important;
+  min-width: 76px !important;
+  max-width: 76px !important;
+  box-sizing: border-box;
+}
+
+/* Center an empty dash and the complete 1/1-style charge expression as one visual unit. */
+.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) {
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 2px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) > span.value,
+.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) > span.max {
+  width: auto !important;
+  min-width: 0 !important;
+  text-align: center !important;
+}
+
+/* Editable current/max values keep symmetric 24px fields around the slash. */
+.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) > input {
+  width: 24px !important;
+  flex: 0 0 24px !important;
 }

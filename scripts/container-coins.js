@@ -144,7 +144,7 @@ function primaryValueElement(cell, id) {
   if (id === "price") return wrapDirectValueText(cell);
   if (id === "roll") return cell.querySelector(".stacked > .value, :scope > .value") ?? wrapDirectValueText(cell);
   if (id === "formula") return cell.querySelector(":scope > .row > .formula");
-  if (id === "uses" || id === "charges") return cell.querySelector(":scope > .value, :scope > input") ?? wrapDirectValueText(cell);
+  if (id === "uses" || id === "charges") return cell;
   return null;
 }
 
