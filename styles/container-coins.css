@@ -158,3 +158,47 @@
   justify-self: start;
   margin-left: 5px;
 }
+
+/* Weapon responsiveness: the normal inventory columns keep the same 76px rhythm as Equipment.
+   Roll and Formula are intentionally sacrificed first by the D&D5e resize engine. */
+
+/* Charges / Uses: center the COMPLETE rendered value (1/1, 2/3 or the empty dash). */
+.dnd5e2 .items-list :is(.item-header, .item-detail):is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) {
+  justify-content: center !important;
+  text-align: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) {
+  gap: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) > :is(.value, .separator, .max) {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) > .value {
+  text-align: right !important;
+}
+
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) > .max {
+  text-align: left !important;
+}

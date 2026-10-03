@@ -162,9 +162,11 @@ function alignInventoryHeadersToValues(root) {
 
       // Price is normalized by CSS below. Never move its header toward D&D5e's native
       // right-aligned price content, otherwise the Weight → Price gap becomes larger.
-      if (id === "price") {
-        for (const cell of section.querySelectorAll(".item-detail[data-column-id='price']")) {
-          primaryValueElement(cell, "price");
+      if (id === "price" || id === "uses" || id === "charges") {
+        if (id === "price") {
+          for (const cell of section.querySelectorAll(".item-detail[data-column-id='price']")) {
+            primaryValueElement(cell, "price");
+          }
         }
         continue;
       }
@@ -231,11 +233,87 @@ function blankCoinPrices(app, root) {
   }
 }
 
+
+function sectionItemType(section, actor) {
+  const row = section.querySelector("li.item[data-item-id]");
+  if (!row) return null;
+  return actor?.items?.get?.(row.dataset.itemId)?.type ?? null;
+}
+
+function refreshInventoryResponsiveState(inventory) {
+  if (!inventory) return;
+  try {
+    inventory._cacheSections?.();
+    requestAnimationFrame(() => {
+      const width = inventory.getBoundingClientRect().width;
+      if (!width) return;
+      inventory._onResize?.([{ borderBoxSize: [{ inlineSize: width }] }]);
+    });
+  } catch (err) {
+    console.warn(MODULE_ID + " | Не удалось пересчитать адаптивные колонки инвентаря", err);
+  }
+}
+
+function normalizeInventoryResponsiveColumns(app, root) {
+  if (!(root instanceof Element)) return;
+  const actor = actorFromApp(app);
+  if (actor?.type !== "character") return;
+
+  const inventory = root.matches?.("dnd5e-inventory") ? root : root.querySelector("dnd5e-inventory");
+  if (!inventory) return;
+
+  const sections = Array.from(inventory.querySelectorAll(".items-section"));
+  let equipmentMinWidth = "250";
+
+  // Read the equipment section's own minimum name-column width first.
+  for (const section of sections) {
+    if (sectionItemType(section, actor) === "equipment") {
+      equipmentMinWidth = section.dataset.columnMinWidth || "250";
+      break;
+    }
+  }
+
+  for (const section of sections) {
+    const type = sectionItemType(section, actor);
+    const header = section.querySelector(":scope > .items-header");
+    if (!header) continue;
+
+    // Keep the basic economy columns the same physical width everywhere.
+    for (const id of ["quantity", "weight", "price", "charges", "uses"]) {
+      const cell = header.querySelector(":scope > [data-column-id='" + id + "']");
+      if (cell) cell.dataset.columnWidth = "76";
+    }
+
+    if (type !== "weapon") continue;
+
+    // A weapon has extra Roll + Formula columns. On narrow sheets those must disappear
+    // BEFORE the normal inventory columns so the weapon name area behaves like Equipment.
+    section.dataset.columnMinWidth = equipmentMinWidth;
+    const priorities = {
+      controls: 1000,
+      charges: 900,
+      uses: 900,
+      quantity: 800,
+      weight: 700,
+      price: 600,
+      roll: 200,
+      formula: 100
+    };
+    for (const [id, priority] of Object.entries(priorities)) {
+      const cell = header.querySelector(":scope > [data-column-id='" + id + "']");
+      if (cell) cell.dataset.columnPriority = String(priority);
+    }
+  }
+
+  refreshInventoryResponsiveState(inventory);
+}
+
 function decorateInventoryLayout(app, html) {
   const root = getRoot(html, app);
   if (!root) return;
   reorderInventoryColumns(root);
   blankCoinPrices(app, root);
+  normalizeInventoryResponsiveColumns(app, root);
   scheduleInventoryHeaderAlignment(root);
 }
 
