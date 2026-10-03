@@ -106,9 +106,23 @@
 .dnd5e2 .items-list .item-detail.lps-balanced-column>.lps-balanced-value{
  display:grid;grid-template-columns:18px auto 18px;grid-template-rows:1fr;justify-content:center;align-items:center;width:100%;min-width:0
 }
-.dnd5e2 .items-list .lps-balanced-value>.lps-balance-spacer{grid-column:1;grid-row:1;width:18px}
 .dnd5e2 .items-list .lps-balanced-value>.lps-column-value{grid-column:2;grid-row:1;justify-self:center;white-space:nowrap;line-height:1}
-.dnd5e2 .items-list .lps-balanced-value>.lps-column-icon{grid-column:3;grid-row:1;justify-self:start;margin-left:4px}
+
+/* Вес: иконка слева от числа, справа зеркальный пустой слот. */
+.dnd5e2 .items-list .lps-weight-column .lps-column-icon{
+ grid-column:1;grid-row:1;justify-self:end;margin:0 4px 0 0
+}
+.dnd5e2 .items-list .lps-weight-column .lps-balance-spacer{
+ grid-column:3;grid-row:1;width:18px
+}
+
+/* Цена: число по центру, базовая иконка валюты сразу справа, слева зеркальный слот. */
+.dnd5e2 .items-list .lps-price-column .lps-balance-spacer{
+ grid-column:1;grid-row:1;width:18px
+}
+.dnd5e2 .items-list .lps-price-column .lps-column-icon{
+ grid-column:3;grid-row:1;justify-self:start;margin:0 0 0 3px
+}
 
 .dnd5e2 .items-list .item-detail[data-column-id="roll"]{justify-content:center!important;text-align:center!important}
 .dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row{
