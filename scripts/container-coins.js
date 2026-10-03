@@ -160,6 +160,15 @@ function alignInventoryHeadersToValues(root) {
       if (!headerCell) continue;
       headerCell.style.transform = "";
 
+      // Price is normalized by CSS below. Never move its header toward D&D5e's native
+      // right-aligned price content, otherwise the Weight → Price gap becomes larger.
+      if (id === "price") {
+        for (const cell of section.querySelectorAll(".item-detail[data-column-id='price']")) {
+          primaryValueElement(cell, "price");
+        }
+        continue;
+      }
+
       const rows = Array.from(section.querySelectorAll(".item-detail[data-column-id='" + id + "']"))
         .filter(cell => !cell.classList.contains("hidden-width") && !cell.classList.contains("hidden-column"));
 

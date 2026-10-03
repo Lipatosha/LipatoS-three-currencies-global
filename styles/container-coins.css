@@ -132,3 +132,29 @@
   width: 24px !important;
   flex: 0 0 24px !important;
 }
+
+/* Price is the only native D&D5e economy column that is right-aligned.
+   Center the numeric amount in the same 76px cell as its header and keep the currency icon
+   as an accessory to the right, so Weight → Price has the same center-to-center spacing
+   as Quantity → Weight. */
+.dnd5e2 .items-list .item-detail[data-column-id="price"]:not(.lipatos-empty-coin-price) {
+  display: grid !important;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  justify-content: stretch !important;
+  gap: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail[data-column-id="price"]:not(.lipatos-empty-coin-price) > .lps-value-text {
+  grid-column: 2;
+  justify-self: center;
+  white-space: nowrap;
+}
+
+.dnd5e2 .items-list .item-detail[data-column-id="price"]:not(.lipatos-empty-coin-price) > i.currency {
+  grid-column: 3;
+  justify-self: start;
+  margin-left: 5px;
+}
