@@ -1,9 +1,9 @@
-<div class="item-detail item-price lps-balanced-column lps-price-column {{#unless entry.system.price.value}}empty{{/unless}}" data-column-id="price">
+<div class="item-detail item-price lps-value-icon-column {{#unless entry.system.price.value}}empty{{/unless}}" data-column-id="price">
     {{#if entry.system.price.value}}
-    <span class="lps-balanced-value">
-        <span class="lps-balance-spacer" aria-hidden="true"></span>
-        <span class="lps-column-value">{{ifThen ctx.concealDetails "—" (dnd5e-numberFormat entry.system.price.value)}}</span>
-        <i class="currency {{ entry.system.price.denomination }} lps-column-icon"
+    <span class="lps-mirror-slot" aria-hidden="true"></span>
+    <span class="lps-main-value">{{ifThen ctx.concealDetails "—" (dnd5e-numberFormat entry.system.price.value)}}</span>
+    <span class="lps-icon-slot lps-price-icon-slot">
+        <i class="currency {{ entry.system.price.denomination }}"
            aria-label="{{ lookup (lookup @root.config.currencies entry.system.price.denomination) "label" }}"></i>
     </span>
     {{/if}}
