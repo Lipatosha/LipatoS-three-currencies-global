@@ -66,7 +66,7 @@ function coinData(denomination, quantity=1, options={}) {
       },
       quantity: Math.max(1, Math.floor(Number(quantity) || 1)),
       weight: { value: 0.02, units: "lb" },
-      price: { value: 1, denomination },
+      price: { value: 0, denomination },
       type: { value: "treasure" },
       properties: [],
       container: options.container ?? null
@@ -82,6 +82,89 @@ function coinData(denomination, quantity=1, options={}) {
 
 function denominationLabel(denomination) {
   return COINS[denomination]?.name ?? denomination.toUpperCase();
+}
+
+
+function reorderInventoryColumns(root) {
+  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
+  const order = ["quantity", "weight", "price"];
+
+  const reorder = parent => {
+    const children = Array.from(parent.children);
+    const targets = order
+      .map(id => children.find(child => child.dataset?.columnId === id))
+      .filter(Boolean);
+    if (targets.length < 2) return;
+
+    const firstIndex = Math.min(...targets.map(node => children.indexOf(node)));
+    const marker = document.createComment("lipatos-column-order");
+    parent.insertBefore(marker, children[firstIndex]);
+    for (const id of order) {
+      const node = targets.find(target => target.dataset.columnId === id);
+      if (node) parent.insertBefore(node, marker);
+    }
+    marker.remove();
+  };
+
+  for (const header of root.querySelectorAll(".items-header")) reorder(header);
+  for (const row of root.querySelectorAll(".item-row")) reorder(row);
+}
+
+function inventoryItemById(app, itemId) {
+  if (!itemId) return null;
+  const actor = actorFromApp(app);
+  if (actor?.items?.get) {
+    const item = actor.items.get(itemId);
+    if (item) return item;
+  }
+
+  const document = getDocument(app);
+  if (document?.documentName === "Item" && document.type === "container") {
+    const item = collectionForContainer(document)?.get?.(itemId);
+    if (item) return item;
+  }
+
+  return game.items?.get(itemId) ?? null;
+}
+
+function blankCoinPrices(app, root) {
+  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
+  for (const row of root.querySelectorAll("li.item[data-item-id]")) {
+    const item = inventoryItemById(app, row.dataset.itemId);
+    if (!coinDenomination(item)) continue;
+    row.classList.add("lipatos-coin-item");
+    const price = row.querySelector(":scope > .item-row > [data-column-id='price']");
+    if (!price) continue;
+    price.replaceChildren();
+    price.classList.add("lipatos-empty-coin-price");
+    price.classList.remove("empty");
+  }
+}
+
+function decorateInventoryLayout(app, html) {
+  const root = getRoot(html, app);
+  if (!root) return;
+  reorderInventoryColumns(root);
+  blankCoinPrices(app, root);
+}
+
+async function normalizePhysicalCoinPrices() {
+  if (!game.user.isGM || !isDnd5e()) return;
+  const seen = new Set();
+  const normalize = async item => {
+    if (!item || !coinDenomination(item)) return;
+    const key = item.uuid ?? item.id;
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (Number(item.system?.price?.value ?? 0) !== 0) {
+      await item.update({ "system.price.value": 0 });
+    }
+  };
+
+  for (const item of game.items ?? []) await normalize(item);
+  for (const actor of game.actors ?? []) {
+    for (const item of actor.items ?? []) await normalize(item);
+  }
 }
 
 function hideContainerCurrency(app, html) {
@@ -102,14 +185,6 @@ function actorFromApp(app) {
   if (doc?.documentName === "Actor") return doc;
   if (app?.actor?.documentName === "Actor") return app.actor;
   return null;
-}
-
-function applyCurrencyIcons() {
-  const currencies = CONFIG?.DND5E?.currencies;
-  if (!currencies) return;
-  for (const denomination of ["gp", "sp", "cp"]) {
-    if (currencies[denomination]) currencies[denomination].icon = COINS[denomination].img;
-  }
 }
 
 function decorateCharacterCurrency(app, html) {
@@ -356,9 +431,6 @@ async function promptTransferAmount({ maximum, fromName, toName, title="Пере
       + '<button type="button" data-lipatos-amount-preset="half" data-maximum="' + maximum + '">'
       + '<i class="fa-solid fa-circle-half-stroke"></i><span>Половина</span></button>'
       + '</div>'
-      + '<p class="notes">Из «' + escapeHtml(fromName) + '» в «' + escapeHtml(toName)
-      + '». Доступно: ' + maximum + '.</p>'
-      + '<p class="notes">Кнопки «Всё» и «Половина» только подставляют число. Для передачи нажмите «Подтвердить».</p>'
       + '</div>',
     ok: {
       label: "Подтвердить",
@@ -707,7 +779,7 @@ async function ensureCoinTemplates() {
     if (item.img !== desired.img) updates.img = desired.img;
     if (item.folder?.id !== folder.id) updates.folder = folder.id;
     if (coinQuantity(item) !== 1) updates["system.quantity"] = 1;
-    if (item.system?.price?.value !== 1) updates["system.price.value"] = 1;
+    if (item.system?.price?.value !== 0) updates["system.price.value"] = 0;
     if (item.system?.price?.denomination !== denomination) updates["system.price.denomination"] = denomination;
     if (item.system?.weight?.value !== 0.02) updates["system.weight.value"] = 0.02;
     if (item.system?.weight?.units !== "lb") updates["system.weight.units"] = "lb";
@@ -775,14 +847,13 @@ async function migrateAllContainerCurrency() {
   }
 }
 
-Hooks.once("init", applyCurrencyIcons);
-
 Hooks.on("renderApplicationV2", (app, html) => {
   hideContainerCurrency(app, html);
   bindCharacterDrop(app, html);
   decorateCharacterCurrency(app, html);
   bindContainerCurrencyDrop(app, html);
   decorateCurrencyTooltips(getRoot(html, app) ?? document);
+  decorateInventoryLayout(app, html);
 });
 Hooks.on("renderApplication", (app, html) => {
   hideContainerCurrency(app, html);
@@ -790,14 +861,17 @@ Hooks.on("renderApplication", (app, html) => {
   decorateCharacterCurrency(app, html);
   bindContainerCurrencyDrop(app, html);
   decorateCurrencyTooltips(getRoot(html, app) ?? document);
+  decorateInventoryLayout(app, html);
 });
 Hooks.on("renderItemSheet", (app, html) => {
   hideContainerCurrency(app, html);
   bindContainerCurrencyDrop(app, html);
+  decorateInventoryLayout(app, html);
 });
 Hooks.on("renderActorSheet", (app, html) => {
   bindCharacterDrop(app, html);
   decorateCharacterCurrency(app, html);
+  decorateInventoryLayout(app, html);
 });
 Hooks.on("dnd5e.dropItemSheetData", onContainerSheetDrop);
 
@@ -820,5 +894,6 @@ Hooks.once("ready", () => {
 Hooks.once("ready", async () => {
   if (!isDnd5e() || !game.user.isGM) return;
   await ensureCoinTemplates();
+  await normalizePhysicalCoinPrices();
   await migrateAllContainerCurrency();
 });
