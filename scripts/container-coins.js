@@ -96,57 +96,32 @@ function denominationLabel(denomination) {
 
 
 const INVENTORY_PARTIALS = Object.freeze({
+  "lipatos.currency.quantity": "modules/lipatos-three-currencies-global/templates/inventory/columns/quantity.hbs",
   "lipatos.currency.weight": "modules/lipatos-three-currencies-global/templates/inventory/columns/weight.hbs",
   "lipatos.currency.price": "modules/lipatos-three-currencies-global/templates/inventory/columns/price.hbs",
-  "lipatos.currency.formula": "modules/lipatos-three-currencies-global/templates/inventory/columns/formula.hbs"
+  "lipatos.currency.formula": "modules/lipatos-three-currencies-global/templates/inventory/columns/formula.hbs",
+  "lipatos.currency.uses": "modules/lipatos-three-currencies-global/templates/inventory/columns/uses.hbs"
 });
 
-function configureInventoryColumns(columns) {
-  if (!Array.isArray(columns)) return;
-  const layout = {
-    quantity: { order: 100, width: 76, priority: 800 },
-    weight:   { order: 200, width: 76, priority: 700, template: "lipatos.currency.weight" },
-    price:    { order: 300, width: 76, priority: 600, template: "lipatos.currency.price" },
-    roll:     { order: 400, priority: 200 },
-    formula:  { order: 500, priority: 100, template: "lipatos.currency.formula" },
-    charges:  { order: 600, width: 76, priority: 900 },
-    uses:     { order: 600, width: 76, priority: 900 },
+function installInventoryPresentation() {
+  const Inventory = customElements.get("dnd5e-inventory");
+  if (!Inventory?.COLUMNS) return false;
+
+  const patch = {
+    quantity: { width: 76, order: 100, priority: 800, template: "lipatos.currency.quantity" },
+    weight:   { width: 76, order: 200, priority: 700, template: "lipatos.currency.weight" },
+    price:    { width: 76, order: 300, priority: 600, template: "lipatos.currency.price" },
+    roll:     { width: 60, order: 400, priority: 200 },
+    formula:  { width: 96, order: 500, priority: 100, template: "lipatos.currency.formula" },
+    charges:  { width: 76, order: 600, priority: 900, template: "lipatos.currency.uses" },
+    uses:     { width: 76, order: 600, priority: 900, template: "lipatos.currency.uses" },
     controls: { order: 1000, priority: 1000 }
   };
-  for (const column of columns) {
-    const config = layout[column?.id];
-    if (config) Object.assign(column, config);
+
+  for (const [id, config] of Object.entries(patch)) {
+    if (Inventory.COLUMNS[id]) Object.assign(Inventory.COLUMNS[id], config);
   }
-  columns.sort((a,b) =>
-    (layout[a?.id]?.order ?? a?.order ?? 500) - (layout[b?.id]?.order ?? b?.order ?? 500)
-  );
-}
-
-function configureInventorySheetContext(sheet, partId, context) {
-  if (!isDnd5e()) return;
-
-  const actor = sheet?.actor ?? (sheet?.document?.documentName === "Actor" ? sheet.document : sheet?.document?.actor);
-  const isCharacterInventory = partId === "inventory"
-    && actor?.documentName === "Actor"
-    && actor.type === "character";
-  const isContainerContents = partId === "contents"
-    && sheet?.document?.documentName === "Item"
-    && sheet.document.type === "container";
-
-  if (!isCharacterInventory && !isContainerContents) return;
-
-  const sections = isCharacterInventory ? (context?.sections ?? []) : (context?.inventory ?? []);
-  for (const section of sections) {
-    configureInventoryColumns(section.columns);
-    if (isCharacterInventory && section.id === "weapons") {
-      section.dataset ??= {};
-      section.dataset.columnMinWidth = "250";
-    }
-  }
-
-  const itemContext = context?.itemContext;
-  const entries = itemContext instanceof Map ? itemContext.values() : Object.values(itemContext ?? {});
-  for (const itemCtx of entries) configureInventoryColumns(itemCtx?.columns);
+  return true;
 }
 
 async function normalizePhysicalCoins() {
@@ -963,9 +938,8 @@ async function migrateAllContainerCurrency() {
 Hooks.once("init", async () => {
   if (!isDnd5e()) return;
   await foundry.applications.handlebars.loadTemplates(INVENTORY_PARTIALS);
+  if (!installInventoryPresentation()) Hooks.once("ready", () => installInventoryPresentation());
 });
-
-Hooks.on("dnd5e.prepareSheetContext", configureInventorySheetContext);
 
 Hooks.on("renderApplicationV2", (app, html) => {
   hideContainerCurrency(app, html);
