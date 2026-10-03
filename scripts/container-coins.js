@@ -581,9 +581,21 @@ function installAmountPresetButtons() {
   }, true);
 }
 
-async function promptTransferAmount({ maximum, fromName, toName, title="Передать монеты" }) {
-  maximum = Math.max(0, Math.floor(Number(maximum) || 0));
-  if (!maximum) return 0;
+async function promptTransferAmount({ maximum=null, fromName, toName, title="Передать монеты", defaultValue=null }) {
+  const limited = Number.isFinite(Number(maximum)) && Number(maximum) > 0;
+  const max = limited ? Math.max(1, Math.floor(Number(maximum))) : null;
+  const initial = Math.max(1, Math.floor(Number(defaultValue ?? (limited ? max : 1)) || 1));
+  const value = limited ? Math.min(max, initial) : initial;
+
+  const maxAttr = limited ? ' max="' + max + '"' : "";
+  const presets = limited
+    ? '<div class="lps-coin-transfer-presets">'
+      + '<button type="button" data-lipatos-amount-preset="all" data-maximum="' + max + '">'
+      + '<i class="fa-solid fa-coins"></i><span>Всё</span></button>'
+      + '<button type="button" data-lipatos-amount-preset="half" data-maximum="' + max + '">'
+      + '<i class="fa-solid fa-circle-half-stroke"></i><span>Половина</span></button>'
+      + '</div>'
+    : "";
 
   const result = await foundry.applications.api.DialogV2.prompt({
     rejectClose: false,
@@ -592,22 +604,17 @@ async function promptTransferAmount({ maximum, fromName, toName, title="Пере
     content:
       '<div class="lps-coin-transfer">'
       + '<div class="form-group"><label>Количество</label><div class="form-fields">'
-      + '<input name="amount" type="number" min="1" max="' + maximum + '" step="1" value="' + maximum + '">'
+      + '<input name="amount" type="number" min="1"' + maxAttr + ' step="1" value="' + value + '">'
       + '</div></div>'
-      + '<div class="lps-coin-transfer-presets">'
-      + '<button type="button" data-lipatos-amount-preset="all" data-maximum="' + maximum + '">'
-      + '<i class="fa-solid fa-coins"></i><span>Всё</span></button>'
-      + '<button type="button" data-lipatos-amount-preset="half" data-maximum="' + maximum + '">'
-      + '<i class="fa-solid fa-circle-half-stroke"></i><span>Половина</span></button>'
-      + '</div>'
+      + presets
       + '</div>',
     ok: {
       label: "Подтвердить",
       icon: "fa-solid fa-check",
       callback: (_event, button) => {
         const amount = Math.floor(Number(button.form.elements.amount.value));
-        if (!Number.isFinite(amount)) return 0;
-        return Math.min(maximum, Math.max(1, amount));
+        if (!Number.isFinite(amount) || amount < 1) return 0;
+        return limited ? Math.min(max, amount) : amount;
       }
     }
   });
@@ -668,7 +675,9 @@ function bindContainerCurrencyDrop(app, html) {
   wiredContainerRoots.add(root);
 
   root.addEventListener("dragover", event => {
-    if (!activeCurrencyDrag) return;
+    // Currency-counter drags and normal Item drags are both valid candidates.
+    const types = Array.from(event.dataTransfer?.types ?? []);
+    if (!activeCurrencyDrag && !types.includes("text/plain")) return;
     event.preventDefault();
     event.stopPropagation();
     if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
@@ -680,17 +689,33 @@ function bindContainerCurrencyDrop(app, html) {
   }, true);
 
   root.addEventListener("drop", event => {
-    const data = currencyDragData(event);
-    if (!data) return;
     root.classList.remove("lipatos-currency-drop-target");
+
+    const currencyData = currencyDragData(event);
+    if (currencyData) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+
+      void moveCurrencyToContainer(currencyData, container).catch(err => {
+        console.error(MODULE_ID + " | Ошибка перемещения валюты в контейнер", err);
+        ui.notifications.error("LipatoS: не удалось переместить монеты в контейнер.");
+      });
+      return;
+    }
+
+    const data = parseDropData(event);
+    if (data?.type !== "Item") return;
+    const source = syncItemFromDropData(data);
+    if (!isWorldCoinTemplate(source)) return;
 
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation?.();
 
-    void moveCurrencyToContainer(data, container).catch(err => {
-      console.error(MODULE_ID + " | Ошибка перемещения валюты в контейнер", err);
-      ui.notifications.error("LipatoS: не удалось переместить монеты в контейнер.");
+    void grantWorldTemplateCoinsToContainer(container, source).catch(err => {
+      console.error(MODULE_ID + " | Ошибка выдачи монет ГМа в открытый контейнер", err);
+      ui.notifications.error("LipatoS: не удалось добавить монеты в контейнер.");
     });
   }, true);
 }
@@ -742,6 +767,33 @@ async function creditActorCurrency(actor, denomination, quantity) {
   return true;
 }
 
+function isWorldCoinTemplate(item) {
+  return !!item && !item.isEmbedded && isManagedTemplate(item) && !!coinDenomination(item);
+}
+
+async function grantWorldTemplateCoinsToContainer(container, source) {
+  const denomination = coinDenomination(source);
+  if (!denomination || container?.type !== "container" || !isWorldCoinTemplate(source)) return;
+
+  if (!game.user.isGM && !container.isOwner) {
+    ui.notifications.warn("LipatoS: нет прав на изменение этого контейнера.");
+    return;
+  }
+  if (!(await container.system.canDropContents())) return;
+
+  const amount = await promptTransferAmount({
+    maximum: null,
+    defaultValue: 1,
+    fromName: "Предметы ГМа",
+    toName: container.name,
+    title: "Добавить " + COINS[denomination].name.toLowerCase()
+  });
+  if (!amount) return;
+
+  await putPhysicalCoinsInContainer(container, denomination, amount);
+  ui.notifications.info(container.name + ": +" + amount + " × " + denominationLabel(denomination));
+}
+
 async function absorbDroppedCoin(actor, item) {
   const denomination = coinDenomination(item);
   if (!denomination) return;
@@ -751,15 +803,17 @@ async function absorbDroppedCoin(actor, item) {
     return;
   }
 
-  const maximum = coinQuantity(item);
+  const templateSource = isWorldCoinTemplate(item);
+  const maximum = templateSource ? null : coinQuantity(item);
   const sourceContainer = item.system?.container
     ? collectionForContainer(item)?.get?.(item.system.container)
     : null;
   const amount = await promptTransferAmount({
     maximum,
-    fromName: sourceContainer?.name ?? item.name,
+    defaultValue: templateSource ? 1 : maximum,
+    fromName: templateSource ? "Предметы ГМа" : (sourceContainer?.name ?? item.name),
     toName: actor.name,
-    title: "Передать " + COINS[denomination].name.toLowerCase()
+    title: (templateSource ? "Выдать " : "Передать ") + COINS[denomination].name.toLowerCase()
   });
   if (!amount) return;
 
@@ -767,8 +821,8 @@ async function absorbDroppedCoin(actor, item) {
 
   if (item.isEmbedded) {
     try {
-      if (amount >= maximum) await item.delete();
-      else await item.update({ "system.quantity": maximum - amount });
+      if (amount >= coinQuantity(item)) await item.delete();
+      else await item.update({ "system.quantity": coinQuantity(item) - amount });
     } catch (err) {
       console.error(MODULE_ID + " | Монеты зачислены, но исходную стопку обновить не удалось", err);
       // Roll back the actor currency to avoid duplication if source update fails.
@@ -808,12 +862,28 @@ function onCharacterInventoryDrop(event, actor) {
     return;
   }
 
-  // Dropping an existing physical coin onto a container keeps it physical.
-  if (event.target.closest(".container[data-item-id]")) return;
-
   if (data?.type !== "Item") return;
   const item = syncItemFromDropData(data);
   if (!item || !coinDenomination(item)) return;
+
+  const containerTarget = event.target.closest(".container[data-item-id]");
+  if (containerTarget && isWorldCoinTemplate(item)) {
+    const container = actor.items.get(containerTarget.dataset.itemId);
+    if (container?.type !== "container") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+
+    void grantWorldTemplateCoinsToContainer(container, item).catch(err => {
+      console.error(MODULE_ID + " | Ошибка выдачи монет ГМа в контейнер", err);
+      ui.notifications.error("LipatoS: не удалось добавить монеты в контейнер.");
+    });
+    return;
+  }
+
+  // Existing embedded physical coin stacks still use the native D&D5e container move.
+  if (containerTarget) return;
 
   event.preventDefault();
   event.stopPropagation();
@@ -890,21 +960,19 @@ async function putPhysicalCoinsInContainer(container, denomination, quantity) {
 function onContainerSheetDrop(container, _sheet, data) {
   if (!isDnd5e() || container?.type !== "container" || data?.type !== "Item") return;
   const source = syncItemFromDropData(data);
-  if (!source || !isManagedTemplate(source) || !coinDenomination(source)) return;
+  if (!isWorldCoinTemplate(source)) return;
 
-  if (!container.isOwner) {
+  if (!container.isOwner && !game.user.isGM) {
     ui.notifications.warn("LipatoS: нет прав на изменение этого контейнера.");
     return false;
   }
 
-  const denomination = coinDenomination(source);
-  const quantity = coinQuantity(source);
-  void putPhysicalCoinsInContainer(container, denomination, quantity).catch(err => {
-    console.error(MODULE_ID + " | Не удалось положить монеты в контейнер", err);
-    ui.notifications.error("LipatoS: не удалось положить монеты в контейнер.");
+  void grantWorldTemplateCoinsToContainer(container, source).catch(err => {
+    console.error(MODULE_ID + " | Не удалось выдать монеты ГМа в контейнер", err);
+    ui.notifications.error("LipatoS: не удалось добавить монеты в контейнер.");
   });
 
-  // Stop D&D5e from moving the managed world template into a world container.
+  // Never let D&D5e clone the 1-coin GM template into the actor root inventory.
   return false;
 }
 
