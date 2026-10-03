@@ -108,12 +108,12 @@
 }
 .dnd5e2 .items-list .lps-balanced-value>.lps-column-value{grid-column:2;grid-row:1;justify-self:center;white-space:nowrap;line-height:1}
 
-/* Вес: иконка слева от числа, справа зеркальный пустой слот. */
-.dnd5e2 .items-list .lps-weight-column .lps-column-icon{
- grid-column:1;grid-row:1;justify-self:end;margin:0 4px 0 0
-}
+/* Вес: число строго по центру, иконка всегда ПОСЛЕ числа. */
 .dnd5e2 .items-list .lps-weight-column .lps-balance-spacer{
- grid-column:3;grid-row:1;width:18px
+ grid-column:1;grid-row:1;width:18px
+}
+.dnd5e2 .items-list .lps-weight-column .lps-column-icon{
+ grid-column:3;grid-row:1;justify-self:start;margin:0 0 0 4px
 }
 
 /* Цена: число по центру, базовая иконка валюты сразу справа, слева зеркальный слот. */
@@ -144,4 +144,59 @@
 }
 .dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"])>.max{
  flex:0 0 24px!important;width:24px!important;min-width:24px!important;text-align:left!important;padding:0!important;margin:0!important
+}
+
+/* Price currency icons: identical fixed box for GP/SP/CP so every row lines up. */
+.dnd5e2 .items-list .lps-price-column .lps-column-icon.currency {
+  display: inline-block !important;
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  background-size: contain !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  align-self: center;
+}
+
+/* Formula: formula text owns the exact center; damage icon is a fixed right accessory. */
+.dnd5e2 .items-list .item-detail.lps-formula-column {
+  display: flex !important;
+  align-items: center;
+  justify-content: center !important;
+}
+.dnd5e2 .items-list .lps-formula-value {
+  display: grid;
+  grid-template-columns: 18px auto 18px;
+  grid-template-rows: 1fr;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.dnd5e2 .items-list .lps-formula-spacer {
+  grid-column: 1;
+  grid-row: 1;
+  width: 18px;
+}
+.dnd5e2 .items-list .lps-formula-value > .formula {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  white-space: nowrap;
+}
+.dnd5e2 .items-list .lps-formula-icon {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+}
+.dnd5e2 .items-list .lps-formula-icon dnd5e-icon {
+  --icon-size: 14px;
+  width: 14px;
+  height: 14px;
 }
