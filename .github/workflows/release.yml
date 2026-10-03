@@ -7,6 +7,7 @@ on:
       - module.json
       - scripts/**
       - styles/**
+      - templates/**
       - assets/**
       - README.md
       - CHANGELOG.md
@@ -39,7 +40,7 @@ jobs:
       - name: Build ZIP
         shell: bash
         run: |
-          zip -q -r lipatos-three-currencies-global.zip module.json scripts styles assets README.md CHANGELOG.md
+          zip -q -r lipatos-three-currencies-global.zip module.json scripts styles templates assets README.md CHANGELOG.md
 
       - name: Publish versioned release
         env:

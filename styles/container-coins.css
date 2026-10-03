@@ -77,152 +77,56 @@
   font-size: 1.05em;
 }
 
-/* Safe alignment: item rows keep the native D&D5e layout.
-   Only column headers move to the real center of the displayed value. */
-.dnd5e2 .items-list .item-detail[data-column-id="weight"] > .lps-weight-after {
-  margin-left: .25rem;
-  margin-right: 0;
+/* Final inventory geometry is present before first paint; no post-render JS layout pass. */
+.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="quantity"]{order:100}
+.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="weight"]{order:200}
+.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="price"]{order:300}
+.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="roll"]{order:400}
+.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="formula"]{order:500}
+.dnd5e2 .items-list :is(.items-header,.item-row)>:is([data-column-id="charges"],[data-column-id="uses"]){order:600}
+.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="controls"]{order:1000}
+
+.dnd5e2 .items-list :is(.items-header,.item-row)>:is(
+ [data-column-id="quantity"],[data-column-id="weight"],[data-column-id="price"],
+ [data-column-id="charges"],[data-column-id="uses"]
+){
+ flex:0 0 76px!important;width:76px!important;min-width:76px!important;max-width:76px!important;box-sizing:border-box
 }
 
-/* Weight is always rendered as: number, then icon, with a stable readable gap. */
-.dnd5e2 .items-list .item-detail[data-column-id="weight"] > .lps-weight-after {
-  margin-left: 5px !important;
-  margin-right: 0 !important;
+.dnd5e2 .items-list .item-detail[data-column-id="quantity"]:not(.hidden-width):not(.hidden-column){
+ display:grid!important;grid-template-columns:1fr auto 1fr;align-items:center;gap:0;padding-left:0!important;padding-right:0!important
+}
+.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>:is(input,.value){grid-column:2;justify-self:center;margin:0;text-align:center}
+.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="decrease"]{grid-column:1;justify-self:end;margin-right:5px}
+.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="increase"]{grid-column:3;justify-self:start;margin-left:5px}
+
+.dnd5e2 .items-list .item-detail:is([data-column-id="weight"],[data-column-id="price"]){
+ display:grid!important;grid-template-columns:1fr auto 1fr;align-items:center;gap:0;padding-left:0!important;padding-right:0!important
+}
+.dnd5e2 .items-list .item-detail:is([data-column-id="weight"],[data-column-id="price"])>.lps-column-value{
+ grid-column:2;justify-self:center;white-space:nowrap
+}
+.dnd5e2 .items-list .item-detail:is([data-column-id="weight"],[data-column-id="price"])>:is(i.fa-weight-hanging,i.currency){
+ grid-column:3;justify-self:start;margin-left:5px
 }
 
-/* Equal rhythm for the economy columns: Quantity, Weight, Price and Uses/Charges
-   all occupy the same width in both headers and item rows. */
-.dnd5e2 .items-list :is(.items-header, .item-row) > :is(
-  [data-column-id="quantity"],
-  [data-column-id="weight"],
-  [data-column-id="price"],
-  [data-column-id="uses"],
-  [data-column-id="charges"]
-) {
-  flex: 0 0 76px !important;
-  width: 76px !important;
-  min-width: 76px !important;
-  max-width: 76px !important;
-  box-sizing: border-box;
+.dnd5e2 .items-list .item-detail[data-column-id="roll"]{justify-content:center!important;text-align:center!important}
+.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row{
+ display:grid!important;grid-template-columns:1fr auto 1fr;align-items:center;width:100%;gap:0
 }
+.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>.formula{grid-column:2;justify-self:center;white-space:nowrap}
+.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>:not(.formula){grid-column:3;justify-self:start;margin-left:4px}
 
-
-/* Price is the only native D&D5e economy column that is right-aligned.
-   Center the numeric amount in the same 76px cell as its header and keep the currency icon
-   as an accessory to the right, so Weight → Price has the same center-to-center spacing
-   as Quantity → Weight. */
-.dnd5e2 .items-list .item-detail[data-column-id="price"] {
-  display: grid !important;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  justify-content: stretch !important;
-  gap: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+.dnd5e2 .items-list :is(.item-header,.item-detail):is([data-column-id="charges"],[data-column-id="uses"]){
+ justify-content:center!important;text-align:center!important;padding-left:0!important;padding-right:0!important
 }
-
-.dnd5e2 .items-list .item-detail[data-column-id="price"] > .lps-value-text {
-  grid-column: 2;
-  justify-self: center;
-  white-space: nowrap;
+.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"]){gap:0!important}
+.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"])>:is(.value,input){
+ flex:0 0 24px!important;width:24px!important;min-width:24px!important;text-align:right!important;padding:0!important;margin:0!important
 }
-
-.dnd5e2 .items-list .item-detail[data-column-id="price"] > i.currency {
-  grid-column: 3;
-  justify-self: start;
-  margin-left: 5px;
+.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"])>.separator{
+ flex:0 0 auto!important;width:auto!important;min-width:0!important;text-align:center!important;padding:0!important;margin:0 1px!important
 }
-
-/* Weapon responsiveness: the normal inventory columns keep the same 76px rhythm as Equipment.
-   Roll and Formula are intentionally sacrificed first by the D&D5e resize engine. */
-
-/* Charges / Uses: center the COMPLETE rendered value (1/1, 2/3 or the empty dash). */
-.dnd5e2 .items-list :is(.item-header, .item-detail):is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) {
-  justify-content: center !important;
-  text-align: center !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) {
-  gap: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) > :is(.value, .separator, .max) {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  min-width: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) > .value {
-  text-align: right !important;
-}
-
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) > .max {
-  text-align: left !important;
-}
-
-/* Charges / Uses: true visual centering.
-   Current and maximum values have equal 24px slots on both sides of the slash,
-   so the visible "1/1" glyphs are centered under the header, not merely the flex box. */
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) {
-  justify-content: center !important;
-  text-align: center !important;
-  gap: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) > :is(.value, input) {
-  flex: 0 0 24px !important;
-  width: 24px !important;
-  min-width: 24px !important;
-  text-align: right !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) > .separator {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  min-width: 0 !important;
-  text-align: center !important;
-  padding: 0 !important;
-  margin: 0 1px !important;
-}
-
-.dnd5e2 .items-list .item-detail:is(
-  [data-column-id="charges"],
-  [data-column-id="uses"]
-) > .max {
-  flex: 0 0 24px !important;
-  width: 24px !important;
-  min-width: 24px !important;
-  text-align: left !important;
-  padding: 0 !important;
-  margin: 0 !important;
+.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"])>.max{
+ flex:0 0 24px!important;width:24px!important;min-width:24px!important;text-align:left!important;padding:0!important;margin:0!important
 }

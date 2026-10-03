@@ -1,0 +1,6 @@
+<div class="item-detail item-weight {{#unless ctx.totalWeight}}empty{{/unless}}" data-column-id="weight">
+    {{#if ctx.totalWeight}}
+    <span class="lps-column-value">{{ ctx.totalWeight }}</span>
+    <i class="fa-solid fa-weight-hanging" inert></i>
+    {{/if}}
+</div>

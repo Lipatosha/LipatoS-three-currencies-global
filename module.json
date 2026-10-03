@@ -2,7 +2,7 @@
   "id": "lipatos-three-currencies-global",
   "title": "LipatoS - Три валюты D&D5e",
   "description": "Три валюты D&D5e (CP, SP, GP), физические предметы-монеты для контейнеров и автоматическое зачисление монет в валюту персонажа при переносе в его инвентарь.",
-  "version": "4.2.9",
+  "version": "4.3.0",
   "authors": [
     {
       "name": "LipatoS"
