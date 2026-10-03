@@ -14,6 +14,7 @@ let activeCurrencyDrag = null;
 let globalCurrencyDragBound = false;
 let currencyTooltipObserver = null;
 let amountPresetBound = false;
+const inventoryCenterObservers = new WeakMap();
 
 function isDnd5e() {
   return game.system?.id === "dnd5e";
@@ -127,73 +128,108 @@ function wrapDirectColumnText(cell) {
   return primary;
 }
 
-function placeAccessoryAfterPrimary(primary, accessory, gap=4) {
-  if (!primary || !accessory) return;
-  requestAnimationFrame(() => {
-    const width = primary.getBoundingClientRect().width;
-    accessory.style.left = "calc(50% + " + (width / 2 + gap).toFixed(2) + "px)";
-  });
+function primaryElementForColumn(cell, id) {
+  if (id === "quantity") {
+    return cell.querySelector(":scope > input, :scope > .value");
+  }
+  if (id === "formula") {
+    return cell.querySelector(":scope > .row > .formula");
+  }
+  if (id === "roll") {
+    return cell.querySelector(":scope > .stacked > .value, :scope > .value")
+      ?? wrapDirectColumnText(cell);
+  }
+  if (id === "uses" || id === "charges") {
+    return cell.querySelector(":scope > .value, :scope > input")
+      ?? wrapDirectColumnText(cell);
+  }
+  return wrapDirectColumnText(cell);
 }
 
-function centerInventoryPrimaryValues(root) {
-  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
-
-  // Headers are always centered in the actual column box.
-  for (const header of root.querySelectorAll(
-    ".items-header > [data-column-id='quantity'],"
-    + ".items-header > [data-column-id='weight'],"
-    + ".items-header > [data-column-id='price'],"
-    + ".items-header > [data-column-id='roll'],"
-    + ".items-header > [data-column-id='formula'],"
-    + ".items-header > [data-column-id='uses'],"
-    + ".items-header > [data-column-id='charges']"
-  )) header.classList.add("lps-header-centered");
-
-  // Quantity: number is exactly at 50%. Minus and plus are positioned around it.
-  for (const cell of root.querySelectorAll(".item-detail[data-column-id='quantity']")) {
-    cell.classList.add("lps-primary-quantity");
+function accessoryForColumn(cell, id) {
+  if (id === "weight") return cell.querySelector(":scope > i.fa-weight-hanging");
+  if (id === "price") return cell.querySelector(":scope > i.currency");
+  if (id === "formula") {
+    const row = cell.querySelector(":scope > .row");
+    const primary = row?.querySelector(":scope > .formula");
+    return row ? Array.from(row.children).find(child => child !== primary) ?? null : null;
   }
+  return null;
+}
 
-  // Weight and price: center only the number. Decorative icon goes after it.
-  for (const id of ["weight", "price"]) {
+function prepareInventoryPrimaryValues(root) {
+  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
+  const ids = ["quantity", "weight", "price", "roll", "formula", "uses", "charges"];
+
+  for (const id of ids) {
     for (const cell of root.querySelectorAll(".item-detail[data-column-id='" + id + "']")) {
       if (id === "price" && cell.classList.contains("lipatos-empty-coin-price")) continue;
-      const primary = wrapDirectColumnText(cell);
+
+      const primary = primaryElementForColumn(cell, id);
       if (!primary) continue;
 
-      cell.classList.add("lps-primary-value");
-      const icon = id === "weight"
-        ? cell.querySelector(":scope > i.fa-weight-hanging")
-        : cell.querySelector(":scope > i.currency");
-      if (icon) {
-        icon.classList.add("lps-column-accessory");
-        cell.append(icon); // weight icon is now physically after the value in DOM too
-        placeAccessoryAfterPrimary(primary, icon, 4);
+      cell.classList.add("lps-header-anchored-value");
+      primary.classList.add("lps-column-primary");
+
+      const accessory = accessoryForColumn(cell, id);
+      if (accessory) {
+        accessory.classList.add("lps-column-accessory");
+        if (id === "weight") cell.append(accessory);
       }
     }
   }
+}
 
-  // Attack/save numeric value. No decorative icon participates in centering.
-  for (const cell of root.querySelectorAll(".item-detail[data-column-id='roll']")) {
-    cell.classList.add("lps-roll-centered");
-  }
+function alignInventoryValuesToHeaders(root) {
+  if (!(root instanceof Element)) return;
 
-  // Damage/healing: formula itself is exactly at 50%; damage icon sits after it.
-  for (const row of root.querySelectorAll(".item-detail[data-column-id='formula'] > .row")) {
-    const primary = row.querySelector(":scope > .formula");
-    if (!primary) continue;
-    row.classList.add("lps-formula-centered");
-    primary.classList.add("lps-column-primary");
-    const accessory = Array.from(row.children).find(child => child !== primary);
-    if (accessory) {
-      accessory.classList.add("lps-column-accessory");
-      placeAccessoryAfterPrimary(primary, accessory, 3);
+  for (const section of root.querySelectorAll(".items-section")) {
+    const header = section.querySelector(":scope > .items-header");
+    if (!header) continue;
+
+    for (const id of ["quantity", "weight", "price", "roll", "formula", "uses", "charges"]) {
+      const headerCell = header.querySelector(":scope > [data-column-id='" + id + "']");
+      if (!headerCell || headerCell.classList.contains("hidden-width") || headerCell.classList.contains("hidden-column")) continue;
+
+      const headerRect = headerCell.getBoundingClientRect();
+      if (!headerRect.width) continue;
+      const headerCenter = headerRect.left + headerRect.width / 2;
+
+      for (const cell of section.querySelectorAll(".item-detail[data-column-id='" + id + "']")) {
+        if (!cell.classList.contains("lps-header-anchored-value")) continue;
+        if (cell.classList.contains("hidden-width") || cell.classList.contains("hidden-column")) continue;
+
+        const cellRect = cell.getBoundingClientRect();
+        if (!cellRect.width) continue;
+
+        const centerX = headerCenter - cellRect.left;
+        cell.style.setProperty("--lps-center-x", centerX.toFixed(2) + "px");
+
+        const primary = primaryElementForColumn(cell, id);
+        const accessory = accessoryForColumn(cell, id);
+        if (primary && accessory) {
+          const primaryWidth = primary.getBoundingClientRect().width;
+          cell.style.setProperty("--lps-accessory-x", (centerX + primaryWidth / 2 + 6).toFixed(2) + "px");
+        }
+      }
     }
   }
+}
 
-  // Uses/charges contain no decorative icon in their normal numeric state.
-  for (const cell of root.querySelectorAll(".item-detail.item-uses, .item-detail.item-charges")) {
-    cell.classList.add("lps-uses-centered");
+function scheduleInventoryValueAlignment(root) {
+  if (!(root instanceof Element)) return;
+
+  const run = () => {
+    prepareInventoryPrimaryValues(root);
+    alignInventoryValuesToHeaders(root);
+  };
+
+  requestAnimationFrame(() => requestAnimationFrame(run));
+
+  if (!inventoryCenterObservers.has(root)) {
+    const observer = new ResizeObserver(() => requestAnimationFrame(run));
+    observer.observe(root);
+    inventoryCenterObservers.set(root, observer);
   }
 }
 
@@ -233,7 +269,7 @@ function decorateInventoryLayout(app, html) {
   if (!root) return;
   reorderInventoryColumns(root);
   blankCoinPrices(app, root);
-  centerInventoryPrimaryValues(root);
+  scheduleInventoryValueAlignment(root);
 }
 
 async function normalizePhysicalCoinPrices() {

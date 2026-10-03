@@ -81,101 +81,79 @@
   content: none !important;
 }
 
-
-
-/* Deterministic inventory centering: header center == number/formula center. */
-.dnd5e2 .items-list .items-header > .lps-header-centered {
-  justify-content: center !important;
-  text-align: center !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-primary-quantity:not(.hidden-width):not(.hidden-column) {
+/* Header-anchored inventory alignment.
+   The actual number/formula is aligned to the real center of its header cell.
+   Icons and controls are positioned independently and cannot shift that center. */
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value:not(.hidden-width):not(.hidden-column) {
   position: relative !important;
-  display: block !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
 
-.dnd5e2 .items-list .item-detail.lps-primary-quantity > input,
-.dnd5e2 .items-list .item-detail.lps-primary-quantity > .value {
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value > .lps-column-primary,
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value > input.lps-column-primary,
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value > .stacked > .lps-column-primary {
   position: absolute !important;
-  left: 50% !important;
+  left: var(--lps-center-x) !important;
   top: 50% !important;
   transform: translate(-50%, -50%) !important;
   margin: 0 !important;
   text-align: center !important;
+  white-space: nowrap !important;
 }
 
-.dnd5e2 .items-list .item-detail.lps-primary-quantity > [data-action="decrease"] {
-  position: absolute !important;
-  right: calc(50% + 20px) !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-primary-quantity > [data-action="increase"] {
-  position: absolute !important;
-  left: calc(50% + 20px) !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-primary-value:not(.hidden-width):not(.hidden-column) {
-  position: relative !important;
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="quantity"] {
   display: block !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
 }
 
-.dnd5e2 .items-list .item-detail.lps-primary-value > .lps-column-primary {
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="quantity"] > [data-action="decrease"] {
   position: absolute !important;
-  left: 50% !important;
+  left: calc(var(--lps-center-x) - 29px) !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="quantity"] > [data-action="increase"] {
+  position: absolute !important;
+  left: calc(var(--lps-center-x) + 29px) !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value > .lps-column-accessory {
+  position: absolute !important;
+  left: var(--lps-accessory-x) !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  margin: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="formula"] > .row {
+  position: static !important;
+  display: contents !important;
+}
+
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="formula"] > .row > .lps-column-primary {
+  position: absolute !important;
+  left: var(--lps-center-x) !important;
   top: 50% !important;
   transform: translate(-50%, -50%) !important;
   white-space: nowrap !important;
 }
 
-.dnd5e2 .items-list .item-detail.lps-primary-value > .lps-column-accessory {
+.dnd5e2 .items-list .item-detail.lps-header-anchored-value[data-column-id="formula"] > .row > .lps-column-accessory {
   position: absolute !important;
+  left: var(--lps-accessory-x) !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
   margin: 0 !important;
 }
 
-.dnd5e2 .items-list .item-detail.lps-roll-centered {
-  justify-content: center !important;
-  text-align: center !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail[data-column-id="formula"] > .row.lps-formula-centered {
-  position: relative !important;
-  display: block !important;
-  width: 100% !important;
-  min-height: 18px;
-}
-
-.dnd5e2 .items-list .item-detail[data-column-id="formula"] > .row.lps-formula-centered > .lps-column-primary {
-  position: absolute !important;
-  left: 50% !important;
-  top: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  white-space: nowrap !important;
-}
-
-.dnd5e2 .items-list .item-detail[data-column-id="formula"] > .row.lps-formula-centered > .lps-column-accessory {
-  position: absolute !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail.lps-uses-centered {
-  justify-content: center !important;
-  text-align: center !important;
+/* Keep a visible gap between every centered value and its decorative icon. */
+.dnd5e2 .items-list .item-detail[data-column-id="weight"] > i.fa-weight-hanging,
+.dnd5e2 .items-list .item-detail[data-column-id="price"] > i.currency,
+.dnd5e2 .items-list .item-detail[data-column-id="formula"] .lps-column-accessory {
+  margin-left: 0 !important;
 }
