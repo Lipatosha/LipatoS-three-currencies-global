@@ -88,3 +88,22 @@
   margin-left: .25rem;
   margin-right: 0;
 }
+
+/* Comfortable spacing between inventory data columns.
+   Applied equally to headers and row cells so the native D&D5e geometry stays consistent. */
+.dnd5e2 .items-list :is(.items-header, .item-row) > [data-column-id] {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+/* Uses/charges contain plain numeric text or an em dash, so center that content in its own cell. */
+.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/* Weight is always rendered as: number, then icon, with a stable readable gap. */
+.dnd5e2 .items-list .item-detail[data-column-id="weight"] > .lps-weight-after {
+  margin-left: 5px !important;
+  margin-right: 0 !important;
+}

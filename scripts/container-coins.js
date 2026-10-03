@@ -162,11 +162,11 @@ function alignInventoryHeadersToValues(root) {
 
       const rows = Array.from(section.querySelectorAll(".item-detail[data-column-id='" + id + "']"))
         .filter(cell => !cell.classList.contains("hidden-width") && !cell.classList.contains("hidden-column"));
-      let primary = null;
-      for (const cell of rows) {
-        primary = primaryValueElement(cell, id);
-        if (primary?.getBoundingClientRect().width) break;
-      }
+
+      // Normalize every row first (not just the first one). In particular this moves
+      // every weight icon after its numeric value.
+      const primaries = rows.map(cell => primaryValueElement(cell, id));
+      const primary = primaries.find(value => value?.getBoundingClientRect().width);
       if (!primary) continue;
 
       const h = headerCell.getBoundingClientRect();
