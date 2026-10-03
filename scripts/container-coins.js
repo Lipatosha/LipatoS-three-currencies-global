@@ -117,69 +117,83 @@ function wrapDirectColumnText(cell) {
 
   const textNodes = Array.from(cell.childNodes)
     .filter(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
-
   if (!textNodes.length) return null;
 
   primary = document.createElement("span");
   primary.className = "lps-column-primary";
   primary.textContent = textNodes.map(node => node.textContent.trim()).join(" ");
-
   for (const node of textNodes) node.remove();
   cell.prepend(primary);
   return primary;
 }
 
+function placeAccessoryAfterPrimary(primary, accessory, gap=4) {
+  if (!primary || !accessory) return;
+  requestAnimationFrame(() => {
+    const width = primary.getBoundingClientRect().width;
+    accessory.style.left = "calc(50% + " + (width / 2 + gap).toFixed(2) + "px)";
+  });
+}
+
 function centerInventoryPrimaryValues(root) {
   if (!(root instanceof Element || root instanceof DocumentFragment)) return;
 
-  // Quantity: the number itself is the center point. Minus and plus stay on its sides
-  // and no longer affect where the number sits under the header.
+  // Headers are always centered in the actual column box.
+  for (const header of root.querySelectorAll(
+    ".items-header > [data-column-id='quantity'],"
+    + ".items-header > [data-column-id='weight'],"
+    + ".items-header > [data-column-id='price'],"
+    + ".items-header > [data-column-id='roll'],"
+    + ".items-header > [data-column-id='formula'],"
+    + ".items-header > [data-column-id='uses'],"
+    + ".items-header > [data-column-id='charges']"
+  )) header.classList.add("lps-header-centered");
+
+  // Quantity: number is exactly at 50%. Minus and plus are positioned around it.
   for (const cell of root.querySelectorAll(".item-detail[data-column-id='quantity']")) {
-    cell.classList.add("lps-primary-centered", "lps-primary-quantity");
+    cell.classList.add("lps-primary-quantity");
   }
 
-  // Weight: center only the numeric value and show the weight icon after it.
-  for (const cell of root.querySelectorAll(".item-detail[data-column-id='weight']")) {
-    const primary = wrapDirectColumnText(cell);
-    if (!primary) continue;
+  // Weight and price: center only the number. Decorative icon goes after it.
+  for (const id of ["weight", "price"]) {
+    for (const cell of root.querySelectorAll(".item-detail[data-column-id='" + id + "']")) {
+      if (id === "price" && cell.classList.contains("lipatos-empty-coin-price")) continue;
+      const primary = wrapDirectColumnText(cell);
+      if (!primary) continue;
 
-    cell.classList.add("lps-primary-centered", "lps-primary-with-icon");
-    const icon = cell.querySelector(":scope > i.fa-weight-hanging");
-    if (icon) {
-      icon.classList.add("lps-column-accessory");
-      cell.append(icon);
+      cell.classList.add("lps-primary-value");
+      const icon = id === "weight"
+        ? cell.querySelector(":scope > i.fa-weight-hanging")
+        : cell.querySelector(":scope > i.currency");
+      if (icon) {
+        icon.classList.add("lps-column-accessory");
+        cell.append(icon); // weight icon is now physically after the value in DOM too
+        placeAccessoryAfterPrimary(primary, icon, 4);
+      }
     }
   }
 
-  // Price: the amount is centered under "Цена"; the currency icon is accessory
-  // and therefore does not shift the number to the left.
-  for (const cell of root.querySelectorAll(".item-detail[data-column-id='price']")) {
-    if (cell.classList.contains("lipatos-empty-coin-price")) continue;
-    const primary = wrapDirectColumnText(cell);
-    if (!primary) continue;
-
-    cell.classList.add("lps-primary-centered", "lps-primary-with-icon");
-    const icon = cell.querySelector(":scope > i.currency");
-    if (icon) {
-      icon.classList.add("lps-column-accessory");
-      cell.append(icon);
-    }
+  // Attack/save numeric value. No decorative icon participates in centering.
+  for (const cell of root.querySelectorAll(".item-detail[data-column-id='roll']")) {
+    cell.classList.add("lps-roll-centered");
   }
 
-  // Damage/healing formula: center the formula itself; damage-type icon is accessory.
+  // Damage/healing: formula itself is exactly at 50%; damage icon sits after it.
   for (const row of root.querySelectorAll(".item-detail[data-column-id='formula'] > .row")) {
-    const formula = row.querySelector(":scope > .formula");
-    if (!formula) continue;
-    row.classList.add("lps-formula-primary-centered");
-    formula.classList.add("lps-column-primary");
-    const accessory = Array.from(row.children).find(child => child !== formula);
-    accessory?.classList.add("lps-column-accessory");
+    const primary = row.querySelector(":scope > .formula");
+    if (!primary) continue;
+    row.classList.add("lps-formula-centered");
+    primary.classList.add("lps-column-primary");
+    const accessory = Array.from(row.children).find(child => child !== primary);
+    if (accessory) {
+      accessory.classList.add("lps-column-accessory");
+      placeAccessoryAfterPrimary(primary, accessory, 3);
+    }
   }
 
-  // Uses / charges have no decorative icon in the normal numeric state, so center
-  // their complete numeric expression (for example 2/3) as one group.
+  // Uses/charges contain no decorative icon in their normal numeric state.
   for (const cell of root.querySelectorAll(".item-detail.item-uses, .item-detail.item-charges")) {
-    cell.classList.add("lps-primary-uses");
+    cell.classList.add("lps-uses-centered");
   }
 }
 
