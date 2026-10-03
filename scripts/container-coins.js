@@ -1,8 +1,20 @@
 const MODULE_ID = "lipatos-three-currencies-global";
 const COINS = Object.freeze({
-  cp: { name: "Медь", img: "modules/lipatos-three-currencies-global/assets/coins/copper-v2.webp" },
-  sp: { name: "Серебро", img: "modules/lipatos-three-currencies-global/assets/coins/silver.webp" },
-  gp: { name: "Золото", img: "modules/lipatos-three-currencies-global/assets/coins/gold.webp" }
+  cp: {
+    name: "Медь",
+    img: "modules/lipatos-three-currencies-global/assets/coins/copper-v2.webp",
+    description: "Медная монета повседневного обращения. Используется для оплаты еды, дешёвых товаров и мелких услуг."
+  },
+  sp: {
+    name: "Серебро",
+    img: "modules/lipatos-three-currencies-global/assets/coins/silver.webp",
+    description: "Серебряная монета повседневного обращения. Ею расплачиваются за обычные товары, услуги, ночлег и снаряжение."
+  },
+  gp: {
+    name: "Золото",
+    img: "modules/lipatos-three-currencies-global/assets/coins/gold.webp",
+    description: "Распространённая монета для крупных покупок и торговли. Золотом оплачивают хорошее снаряжение, дорогие услуги и ценные товары."
+  }
 });
 
 const actorQueues = new Map();
@@ -61,14 +73,12 @@ function coinData(denomination, quantity=1, options={}) {
     ownership: template ? { default: 0 } : undefined,
     system: {
       description: {
-        value: "<p>Физическая валюта: " + coin.name
-          + ". При переносе из контейнера в инвентарь персонажа автоматически зачисляется в счётчик "
-          + denomination.toUpperCase() + ".</p>"
+        value: "<p>" + coin.description + "</p>"
       },
       quantity: Math.max(1, Math.floor(Number(quantity) || 1)),
       weight: { value: 0.02, units: "lb" },
-      price: { value: 0, denomination },
-      type: { value: "treasure" },
+      price: { value: 1, denomination },
+      type: { value: "" },
       properties: [],
       container: options.container ?? null
     },
@@ -219,20 +229,6 @@ function inventoryItemById(app, itemId) {
   return game.items?.get(itemId) ?? null;
 }
 
-function blankCoinPrices(app, root) {
-  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
-  for (const row of root.querySelectorAll("li.item[data-item-id]")) {
-    const item = inventoryItemById(app, row.dataset.itemId);
-    if (!coinDenomination(item)) continue;
-    row.classList.add("lipatos-coin-item");
-    const price = row.querySelector(":scope > .item-row > [data-column-id='price']");
-    if (!price) continue;
-    price.replaceChildren();
-    price.classList.add("lipatos-empty-coin-price");
-    price.classList.remove("empty");
-  }
-}
-
 
 function sectionItemType(section, actor) {
   const row = section.querySelector("li.item[data-item-id]");
@@ -312,22 +308,39 @@ function decorateInventoryLayout(app, html) {
   const root = getRoot(html, app);
   if (!root) return;
   reorderInventoryColumns(root);
-  blankCoinPrices(app, root);
   normalizeInventoryResponsiveColumns(app, root);
   scheduleInventoryHeaderAlignment(root);
 }
 
-async function normalizePhysicalCoinPrices() {
+async function normalizePhysicalCoins() {
   if (!game.user.isGM || !isDnd5e()) return;
+
   const seen = new Set();
   const normalize = async item => {
-    if (!item || !coinDenomination(item)) return;
+    const denomination = coinDenomination(item);
+    if (!item || !denomination) return;
+
     const key = item.uuid ?? item.id;
     if (seen.has(key)) return;
     seen.add(key);
-    if (Number(item.system?.price?.value ?? 0) !== 0) {
-      await item.update({ "system.price.value": 0 });
+
+    const desired = COINS[denomination];
+    const updates = {};
+
+    if (item.name !== desired.name) updates.name = desired.name;
+    if (item.img !== desired.img) updates.img = desired.img;
+    if (Number(item.system?.price?.value ?? 0) !== 1) updates["system.price.value"] = 1;
+    if (item.system?.price?.denomination !== denomination) {
+      updates["system.price.denomination"] = denomination;
     }
+    if (item.system?.type?.value) updates["system.type.value"] = "";
+
+    const desiredDescription = "<p>" + desired.description + "</p>";
+    if ((item.system?.description?.value ?? "") !== desiredDescription) {
+      updates["system.description.value"] = desiredDescription;
+    }
+
+    if (Object.keys(updates).length) await item.update(updates);
   };
 
   for (const item of game.items ?? []) await normalize(item);
@@ -335,6 +348,7 @@ async function normalizePhysicalCoinPrices() {
     for (const item of actor.items ?? []) await normalize(item);
   }
 }
+
 
 function hideContainerCurrency(app, html) {
   if (!isDnd5e()) return;
@@ -1036,8 +1050,13 @@ async function ensureCoinTemplates() {
     if (item.img !== desired.img) updates.img = desired.img;
     if (item.folder?.id !== folder.id) updates.folder = folder.id;
     if (coinQuantity(item) !== 1) updates["system.quantity"] = 1;
-    if (item.system?.price?.value !== 0) updates["system.price.value"] = 0;
+    if (item.system?.price?.value !== 1) updates["system.price.value"] = 1;
     if (item.system?.price?.denomination !== denomination) updates["system.price.denomination"] = denomination;
+    if (item.system?.type?.value) updates["system.type.value"] = "";
+    const desiredDescription = "<p>" + desired.description + "</p>";
+    if ((item.system?.description?.value ?? "") !== desiredDescription) {
+      updates["system.description.value"] = desiredDescription;
+    }
     if (item.system?.weight?.value !== 0.02) updates["system.weight.value"] = 0.02;
     if (item.system?.weight?.units !== "lb") updates["system.weight.units"] = "lb";
     if (Object.keys(updates).length) await item.update(updates);
@@ -1151,6 +1170,6 @@ Hooks.once("ready", () => {
 Hooks.once("ready", async () => {
   if (!isDnd5e() || !game.user.isGM) return;
   await ensureCoinTemplates();
-  await normalizePhysicalCoinPrices();
+  await normalizePhysicalCoins();
   await migrateAllContainerCurrency();
 });
