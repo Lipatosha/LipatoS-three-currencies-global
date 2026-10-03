@@ -530,11 +530,31 @@ function installGlobalCurrencyDrag() {
   }, true);
 
   document.addEventListener("drop", event => {
-    const data = currencyDragData(event);
-    if (!data) return;
-
     const container = resolveContainerDropTarget(event);
-    if (!container) return;
+
+    // GM world-item coin templates must be intercepted here, at document capture phase,
+    // BEFORE D&D5e can clone the item into the actor root inventory.
+    if (container) {
+      const itemData = parseDropData(event);
+      if (itemData?.type === "Item") {
+        const source = syncItemFromDropData(itemData);
+        if (isWorldCoinTemplate(source)) {
+          event.preventDefault();
+          event.stopImmediatePropagation?.();
+          event.stopPropagation();
+          clearCurrencyDropTargets();
+
+          void grantWorldTemplateCoinsToContainer(container, source).catch(err => {
+            console.error(MODULE_ID + " | Ошибка глобальной выдачи монет ГМа в контейнер", err);
+            ui.notifications.error("LipatoS: не удалось добавить монеты в контейнер.");
+          });
+          return;
+        }
+      }
+    }
+
+    const data = currencyDragData(event);
+    if (!data || !container) return;
 
     event.preventDefault();
     event.stopImmediatePropagation?.();
