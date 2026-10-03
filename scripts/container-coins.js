@@ -14,7 +14,6 @@ let activeCurrencyDrag = null;
 let globalCurrencyDragBound = false;
 let currencyTooltipObserver = null;
 let amountPresetBound = false;
-const inventoryAlignmentObservers = new WeakMap();
 
 function isDnd5e() {
   return game.system?.id === "dnd5e";
@@ -142,52 +141,11 @@ function blankCoinPrices(app, root) {
   }
 }
 
-function alignInventoryColumnHeaders(root) {
-  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
-
-  for (const section of root.querySelectorAll(".items-section")) {
-    const header = section.querySelector(":scope > .items-header");
-    const row = section.querySelector(".item-list > li.item > .item-row")
-      ?? section.querySelector("li.item > .item-row");
-    if (!header || !row) continue;
-
-    for (const id of ["quantity", "weight", "price"]) {
-      const headerCell = header.querySelector(':scope > [data-column-id="' + id + '"]');
-      const rowCell = row.querySelector(':scope > [data-column-id="' + id + '"]');
-      if (!headerCell || !rowCell) continue;
-
-      headerCell.style.transform = "";
-      if (headerCell.classList.contains("hidden-width") || rowCell.classList.contains("hidden-width")) continue;
-
-      const h = headerCell.getBoundingClientRect();
-      const r = rowCell.getBoundingClientRect();
-      if (!h.width || !r.width) continue;
-
-      const delta = (r.left + r.width / 2) - (h.left + h.width / 2);
-      headerCell.style.transform = 'translateX(' + delta.toFixed(2) + 'px)';
-    }
-  }
-}
-
-function scheduleInventoryAlignment(root) {
-  if (!(root instanceof Element || root instanceof DocumentFragment)) return;
-  requestAnimationFrame(() => requestAnimationFrame(() => alignInventoryColumnHeaders(root)));
-
-  if (root instanceof Element && !inventoryAlignmentObservers.has(root)) {
-    const observer = new ResizeObserver(() => {
-      requestAnimationFrame(() => alignInventoryColumnHeaders(root));
-    });
-    observer.observe(root);
-    inventoryAlignmentObservers.set(root, observer);
-  }
-}
-
 function decorateInventoryLayout(app, html) {
   const root = getRoot(html, app);
   if (!root) return;
   reorderInventoryColumns(root);
   blankCoinPrices(app, root);
-  scheduleInventoryAlignment(root);
 }
 
 async function normalizePhysicalCoinPrices() {
