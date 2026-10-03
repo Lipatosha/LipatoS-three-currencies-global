@@ -111,27 +111,6 @@
   box-sizing: border-box;
 }
 
-/* Center an empty dash and the complete 1/1-style charge expression as one visual unit. */
-.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) {
-  justify-content: center !important;
-  text-align: center !important;
-  gap: 2px !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) > span.value,
-.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) > span.max {
-  width: auto !important;
-  min-width: 0 !important;
-  text-align: center !important;
-}
-
-/* Editable current/max values keep symmetric 24px fields around the slash. */
-.dnd5e2 .items-list .item-detail:is([data-column-id="uses"], [data-column-id="charges"]) > input {
-  width: 24px !important;
-  flex: 0 0 24px !important;
-}
 
 /* Price is the only native D&D5e economy column that is right-aligned.
    Center the numeric amount in the same 76px cell as its header and keep the currency icon
@@ -201,4 +180,54 @@
   [data-column-id="uses"]
 ) > .max {
   text-align: left !important;
+}
+
+/* Charges / Uses: true visual centering.
+   Current and maximum values have equal 24px slots on both sides of the slash,
+   so the visible "1/1" glyphs are centered under the header, not merely the flex box. */
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) {
+  justify-content: center !important;
+  text-align: center !important;
+  gap: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) > :is(.value, input) {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  text-align: right !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) > .separator {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  text-align: center !important;
+  padding: 0 !important;
+  margin: 0 1px !important;
+}
+
+.dnd5e2 .items-list .item-detail:is(
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) > .max {
+  flex: 0 0 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  text-align: left !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
