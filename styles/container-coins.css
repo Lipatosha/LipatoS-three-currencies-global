@@ -77,126 +77,199 @@
   font-size: 1.05em;
 }
 
-/* Final inventory geometry is present before first paint; no post-render JS layout pass. */
-.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="quantity"]{order:100}
-.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="weight"]{order:200}
-.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="price"]{order:300}
-.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="roll"]{order:400}
-.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="formula"]{order:500}
-.dnd5e2 .items-list :is(.items-header,.item-row)>:is([data-column-id="charges"],[data-column-id="uses"]){order:600}
-.dnd5e2 .items-list :is(.items-header,.item-row)>[data-column-id="controls"]{order:1000}
+/* ==========================================================================
+   LipatoS inventory geometry — one deterministic first-paint layout
+   ========================================================================== */
 
-.dnd5e2 .items-list :is(.items-header,.item-row)>:is(
- [data-column-id="quantity"],[data-column-id="weight"],[data-column-id="price"],
- [data-column-id="charges"],[data-column-id="uses"]
-){
- flex:0 0 76px!important;width:76px!important;min-width:76px!important;max-width:76px!important;box-sizing:border-box
+.dnd5e2 .items-list :is(.item-header,.item-detail)[data-column-id] {
+  box-sizing: border-box;
 }
 
-.dnd5e2 .items-list .item-detail[data-column-id="quantity"]:not(.hidden-width):not(.hidden-column){
- display:grid!important;grid-template-columns:24px auto 24px;grid-template-rows:1fr;justify-content:center;align-items:center;gap:0;padding-left:0!important;padding-right:0!important
+/* Identical header/row widths. */
+.dnd5e2 .items-list :is(.item-header,.item-detail):is(
+  [data-column-id="quantity"],
+  [data-column-id="weight"],
+  [data-column-id="price"],
+  [data-column-id="charges"],
+  [data-column-id="uses"]
+) {
+  flex: 0 0 76px !important;
+  width: 76px !important;
+  min-width: 76px !important;
+  max-width: 76px !important;
 }
-.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>:is(input,.value){grid-column:2;grid-row:1;justify-self:center;margin:0;text-align:center}
-.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="decrease"]{grid-column:1;grid-row:1;justify-self:center;margin:0}
-.dnd5e2 .items-list .item-detail[data-column-id="quantity"]>[data-action="increase"]{grid-column:3;grid-row:1;justify-self:center;margin:0}
-
-.dnd5e2 .items-list .item-detail.lps-balanced-column{
- display:flex!important;align-items:center;justify-content:center!important;padding-left:0!important;padding-right:0!important
+.dnd5e2 .items-list :is(.item-header,.item-detail)[data-column-id="roll"] {
+  flex: 0 0 60px !important;
+  width: 60px !important;
+  min-width: 60px !important;
+  max-width: 60px !important;
 }
-.dnd5e2 .items-list .item-detail.lps-balanced-column>.lps-balanced-value{
- display:grid;grid-template-columns:18px auto 18px;grid-template-rows:1fr;justify-content:center;align-items:center;width:100%;min-width:0
-}
-.dnd5e2 .items-list .lps-balanced-value>.lps-column-value{grid-column:2;grid-row:1;justify-self:center;white-space:nowrap;line-height:1}
-
-/* Вес: число строго по центру, иконка всегда ПОСЛЕ числа. */
-.dnd5e2 .items-list .lps-weight-column .lps-balance-spacer{
- grid-column:1;grid-row:1;width:18px
-}
-.dnd5e2 .items-list .lps-weight-column .lps-column-icon{
- grid-column:3;grid-row:1;justify-self:start;margin:0 0 0 4px
-}
-
-/* Цена: число по центру, базовая иконка валюты сразу справа, слева зеркальный слот. */
-.dnd5e2 .items-list .lps-price-column .lps-balance-spacer{
- grid-column:1;grid-row:1;width:18px
-}
-.dnd5e2 .items-list .lps-price-column .lps-column-icon{
- grid-column:3;grid-row:1;justify-self:start;margin:0 0 0 3px
+.dnd5e2 .items-list :is(.item-header,.item-detail)[data-column-id="formula"] {
+  flex: 0 0 96px !important;
+  width: 96px !important;
+  min-width: 96px !important;
+  max-width: 96px !important;
 }
 
-.dnd5e2 .items-list .item-detail[data-column-id="roll"]{justify-content:center!important;text-align:center!important}
-.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row{
- display:grid!important;grid-template-columns:18px auto 18px;grid-template-rows:1fr;justify-content:center;align-items:center;width:100%;gap:0
-}
-.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row::before{content:"";grid-column:1;grid-row:1;width:18px}
-.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>.formula{grid-column:2;grid-row:1;justify-self:center;white-space:nowrap}
-.dnd5e2 .items-list .item-detail[data-column-id="formula"]>.row>:not(.formula){grid-column:3;grid-row:1;justify-self:start;margin-left:4px}
-
-.dnd5e2 .items-list :is(.item-header,.item-detail):is([data-column-id="charges"],[data-column-id="uses"]){
- justify-content:center!important;text-align:center!important;padding-left:0!important;padding-right:0!important
-}
-.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"]){gap:0!important}
-.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"])>:is(.value,input){
- flex:0 0 24px!important;width:24px!important;min-width:24px!important;text-align:right!important;padding:0!important;margin:0!important
-}
-.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"])>.separator{
- flex:0 0 auto!important;width:auto!important;min-width:0!important;text-align:center!important;padding:0!important;margin:0 1px!important
-}
-.dnd5e2 .items-list .item-detail:is([data-column-id="charges"],[data-column-id="uses"])>.max{
- flex:0 0 24px!important;width:24px!important;min-width:24px!important;text-align:left!important;padding:0!important;margin:0!important
+/* Header text is centered in the exact same box as the values. */
+.dnd5e2 .items-list .items-header > .item-header[data-column-id] {
+  justify-content: center !important;
+  text-align: center !important;
+  padding-inline: 0 !important;
 }
 
-/* Price currency icons: identical fixed box for GP/SP/CP so every row lines up. */
-.dnd5e2 .items-list .lps-price-column .lps-column-icon.currency {
+/* Quantity: symmetric - | value | +. */
+.dnd5e2 .items-list .lps-quantity-column {
+  display: grid !important;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  align-items: center;
+  justify-items: center;
+  padding-inline: 0 !important;
+  gap: 0 !important;
+}
+.dnd5e2 .items-list .lps-quantity-column > .lps-qty-left { grid-column: 1; }
+.dnd5e2 .items-list .lps-quantity-column > .lps-qty-value {
+  grid-column: 2;
+  width: 28px !important;
+  min-width: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+.dnd5e2 .items-list .lps-quantity-column > .lps-qty-right { grid-column: 3; }
+
+/* Weight / Price: the number owns the center.
+   Left mirror slot cancels the icon slot on the right. */
+.dnd5e2 .items-list .lps-value-icon-column {
+  display: grid !important;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
+  align-items: center;
+  justify-items: center;
+  padding-inline: 0 !important;
+  gap: 0 !important;
+}
+.dnd5e2 .items-list .lps-value-icon-column > .lps-mirror-slot {
+  grid-column: 1;
+  width: 18px;
+  height: 18px;
+}
+.dnd5e2 .items-list .lps-value-icon-column > .lps-main-value {
+  grid-column: 2;
+  justify-self: center;
+  white-space: nowrap;
+  line-height: 1;
+}
+.dnd5e2 .items-list .lps-value-icon-column > .lps-icon-slot {
+  grid-column: 3;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 4px;
+  box-sizing: border-box;
+}
+
+/* Required order: number, then weight icon. */
+.dnd5e2 .items-list .lps-weight-icon-slot i {
+  margin: 0 !important;
+  font-size: var(--font-size-9);
+  color: var(--color-text-tertiary);
+}
+
+/* GP/SP/CP: one identical visual box. */
+.dnd5e2 .items-list .lps-price-icon-slot i.currency {
   display: inline-block !important;
+  flex: none !important;
   width: 12px !important;
   height: 12px !important;
   min-width: 12px !important;
-  background-size: contain !important;
+  min-height: 12px !important;
+  margin: 0 !important;
+  background-size: 12px 12px !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
-  align-self: center;
 }
 
-/* Formula: formula text owns the exact center; damage icon is a fixed right accessory. */
-.dnd5e2 .items-list .item-detail.lps-formula-column {
+/* Roll stays centered. */
+.dnd5e2 .items-list .item-detail[data-column-id="roll"] {
+  justify-content: center !important;
+  text-align: center !important;
+  padding-inline: 0 !important;
+}
+
+/* Formula: formula text owns the exact center; damage icon is a right accessory. */
+.dnd5e2 .items-list .lps-formula-column {
   display: flex !important;
   align-items: center;
   justify-content: center !important;
+  padding-inline: 0 !important;
 }
-.dnd5e2 .items-list .lps-formula-value {
+.dnd5e2 .items-list .lps-formula-layout {
   display: grid;
-  grid-template-columns: 18px auto 18px;
-  grid-template-rows: 1fr;
-  justify-content: center;
+  grid-template-columns: 18px minmax(0, 1fr) 18px;
   align-items: center;
+  justify-items: center;
   width: 100%;
   min-width: 0;
 }
-.dnd5e2 .items-list .lps-formula-spacer {
+.dnd5e2 .items-list .lps-formula-layout > .lps-mirror-slot {
   grid-column: 1;
-  grid-row: 1;
   width: 18px;
+  height: 18px;
 }
-.dnd5e2 .items-list .lps-formula-value > .formula {
+.dnd5e2 .items-list .lps-formula-layout > .formula {
   grid-column: 2;
-  grid-row: 1;
   justify-self: center;
   white-space: nowrap;
 }
-.dnd5e2 .items-list .lps-formula-icon {
+.dnd5e2 .items-list .lps-formula-layout > .lps-icon-slot {
   grid-column: 3;
-  grid-row: 1;
-  justify-self: start;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  margin-left: 4px;
+  justify-content: flex-start;
+  padding-left: 3px;
+  box-sizing: border-box;
 }
-.dnd5e2 .items-list .lps-formula-icon dnd5e-icon {
+.dnd5e2 .items-list .lps-damage-icon-slot dnd5e-icon {
   --icon-size: 14px;
   width: 14px;
   height: 14px;
+}
+
+/* Charges / Uses: center the complete 1/1 group. */
+.dnd5e2 .items-list .lps-uses-column {
+  justify-content: center !important;
+  text-align: center !important;
+  padding-inline: 0 !important;
+}
+.dnd5e2 .items-list .lps-uses-group {
+  display: inline-grid;
+  grid-template-columns: 24px auto 24px;
+  align-items: center;
+  justify-items: center;
+}
+.dnd5e2 .items-list .lps-uses-group > :is(.value,input) {
+  grid-column: 1;
+  width: 24px !important;
+  min-width: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  text-align: right !important;
+}
+.dnd5e2 .items-list .lps-uses-group > .separator {
+  grid-column: 2;
+  padding: 0 1px;
+  margin: 0 !important;
+  color: var(--dnd5e-color-gold);
+}
+.dnd5e2 .items-list .lps-uses-group > .max {
+  grid-column: 3;
+  width: 24px !important;
+  min-width: 24px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  text-align: left !important;
 }
