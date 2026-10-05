@@ -95,35 +95,6 @@ function denominationLabel(denomination) {
 }
 
 
-const INVENTORY_PARTIALS = Object.freeze({
-  "lipatos.currency.quantity": "modules/lipatos-three-currencies-global/templates/inventory/columns/quantity.hbs",
-  "lipatos.currency.weight": "modules/lipatos-three-currencies-global/templates/inventory/columns/weight.hbs",
-  "lipatos.currency.price": "modules/lipatos-three-currencies-global/templates/inventory/columns/price.hbs",
-  "lipatos.currency.formula": "modules/lipatos-three-currencies-global/templates/inventory/columns/formula.hbs",
-  "lipatos.currency.uses": "modules/lipatos-three-currencies-global/templates/inventory/columns/uses.hbs"
-});
-
-function installInventoryPresentation() {
-  const Inventory = customElements.get("dnd5e-inventory");
-  if (!Inventory?.COLUMNS) return false;
-
-  const patch = {
-    quantity: { width: 76, order: 100, priority: 800, template: "lipatos.currency.quantity" },
-    weight:   { width: 76, order: 200, priority: 700, template: "lipatos.currency.weight" },
-    price:    { width: 76, order: 300, priority: 600, template: "lipatos.currency.price" },
-    roll:     { width: 60, order: 400, priority: 200 },
-    formula:  { width: 96, order: 500, priority: 100, template: "lipatos.currency.formula" },
-    charges:  { width: 76, order: 600, priority: 900, template: "lipatos.currency.uses" },
-    uses:     { width: 76, order: 600, priority: 900, template: "lipatos.currency.uses" },
-    controls: { order: 1000, priority: 1000 }
-  };
-
-  for (const [id, config] of Object.entries(patch)) {
-    if (Inventory.COLUMNS[id]) Object.assign(Inventory.COLUMNS[id], config);
-  }
-  return true;
-}
-
 async function normalizePhysicalCoins() {
   if (!game.user.isGM || !isDnd5e()) return;
 
@@ -934,12 +905,6 @@ async function migrateAllContainerCurrency() {
     for (const item of actor.items ?? []) await migrate(item);
   }
 }
-
-Hooks.once("init", async () => {
-  if (!isDnd5e()) return;
-  await foundry.applications.handlebars.loadTemplates(INVENTORY_PARTIALS);
-  if (!installInventoryPresentation()) Hooks.once("ready", () => installInventoryPresentation());
-});
 
 Hooks.on("renderApplicationV2", (app, html) => {
   hideContainerCurrency(app, html);
