@@ -76,3 +76,8 @@
 .lps-coin-transfer-presets button i.fa-circle-half-stroke {
   font-size: 1.05em;
 }
+
+/* Единственное изменение штатной таблицы D&D5e: иконка веса после значения. */
+.dnd5e2 .items-list .item-detail.item-weight > i.fa-weight-hanging {
+  order: 1;
+}
