@@ -31,6 +31,7 @@ jobs:
         shell: bash
         run: |
           find scripts -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          node tests/coin-drop.cjs
           node -e 'const m=require("./module.json"); if(m.id!=="lipatos-three-currencies-global"||!m.version||!m.manifest||!m.download) process.exit(1);'
           test -s assets/coins/gold.webp
           test -s assets/coins/silver.webp
