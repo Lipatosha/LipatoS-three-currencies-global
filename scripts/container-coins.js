@@ -313,6 +313,20 @@ function isCharacterCurrencyPanelTarget(target) {
   return !!panel.closest("label")?.querySelector(inputs);
 }
 
+function characterActorForDropTarget(target) {
+  if (!(target instanceof Element)) return null;
+  const root = target.closest("[data-lipatos-currency-actor-uuid]");
+  const uuid = root?.dataset?.lipatosCurrencyActorUuid;
+  if (uuid && globalThis.fromUuidSync) {
+    try {
+      const actor = fromUuidSync(uuid, {strict: false});
+      if (actor?.documentName === "Actor" && actor.type === "character") return actor;
+    } catch {}
+  }
+  const actor = actorFromApp(applicationFromElement(target));
+  return actor?.type === "character" ? actor : null;
+}
+
 function clearCurrencyDropTargets() {
   for (const element of document.querySelectorAll(".lipatos-currency-drop-target")) {
     element.classList.remove("lipatos-currency-drop-target");
@@ -340,7 +354,9 @@ function installGlobalCurrencyDrag() {
     target?.classList.add("lipatos-currency-drop-target");
   }, true);
 
-  document.addEventListener("drop", event => {
+  // Window capture runs BEFORE document/actor-sheet listeners used by D&D5e
+  // and item-move-stack, avoiding late interception of coin drops.
+  window.addEventListener("drop", event => {
     const target = event.target instanceof Element ? event.target : null;
     const container = resolveContainerDropTarget(event);
     const itemData = parseDropData(event);
@@ -381,9 +397,10 @@ function installGlobalCurrencyDrag() {
 
     // Physical coin drops onto ordinary inventory must be swallowed BEFORE
     // Foundry and item-move-stack can import/transfer the Item.
-    if (!target?.closest("dnd5e-inventory, .inventory-element")) return;
+    const actor = characterActorForDropTarget(target);
+    // Restrict the guard to character sheets and their inventory/currency panel.
+    if (!actor && !target?.closest("dnd5e-inventory, .inventory-element")) return;
     const wallet = isCharacterCurrencyPanelTarget(target);
-    const actor = actorFromApp(applicationFromElement(target));
 
     // When the application cannot be found here, the bound character sheet's
     // capture listener still has the opportunity to handle a wallet drop.
@@ -676,7 +693,7 @@ async function absorbDroppedCoin(actor, item) {
 
   if (item.isEmbedded) {
     try {
-      if (amount >= coinQuantity(item)) await item.delete();
+      if (amount >= coinQuantity(item)) await item.delete({ lipatosCurrencyTransfer: true });
       else await item.update({ "system.quantity": coinQuantity(item) - amount });
     } catch (err) {
       console.error(MODULE_ID + " | Монеты зачислены, но исходную стопку обновить не удалось", err);
@@ -760,7 +777,9 @@ function bindCharacterDrop(app, html) {
   if (actor?.type !== "character") return;
 
   const root = getRoot(html, app);
-  if (!root || wiredActorRoots.has(root)) return;
+  if (!root) return;
+  root.dataset.lipatosCurrencyActorUuid = actor.uuid;
+  if (wiredActorRoots.has(root)) return;
   wiredActorRoots.add(root);
 
   root.addEventListener("dragover", event => {
@@ -845,20 +864,6 @@ function onContainerSheetDrop(container, _sheet, data) {
 
   // Never let D&D5e clone the 1-coin GM template into the actor root inventory.
   return false;
-}
-
-async function absorbCreatedInventoryCoin(item) {
-  if (!item?.isEmbedded || item.actor?.type !== "character") return;
-  if (item.system?.container) return;
-
-  const denomination = coinDenomination(item);
-  if (!denomination) return;
-  const quantity = coinQuantity(item);
-
-  if (!(await creditActorCurrency(item.actor, denomination, quantity))) return;
-  const actorName = item.actor.name;
-  await item.delete();
-  ui.notifications.info(actorName + ": +" + quantity + " × " + denominationLabel(denomination));
 }
 
 async function ensureCoinTemplates() {
@@ -984,13 +989,16 @@ Hooks.on("renderActorSheet", (app, html) => {
 });
 Hooks.on("dnd5e.dropItemSheetData", onContainerSheetDrop);
 
-Hooks.on("createItem", (item, _options, userId) => {
-  if (!isDnd5e() || userId !== game.user.id || !coinDenomination(item)) return;
-  if (item.system?.container) return;
-  setTimeout(() => {
-    Promise.resolve(absorbCreatedInventoryCoin(item))
-      .catch(err => console.error(MODULE_ID + " | Ошибка обработки предмета-монеты", err));
-  }, 0);
+// No automatic conversion after an invalid inventory drop: it must do NOTHING.
+// Pre-create cancellation prevents Foundry or another module from placing physical
+// coin Items in the root of a character's inventory, even if their drop handler
+// ran before ours. Coins are allowed as physical Items inside containers only.
+Hooks.on("preCreateItem", (item, data, _options, userId) => {
+  if (!isDnd5e() || userId !== game.user.id) return;
+  if (item?.parent?.documentName !== "Actor" || item.parent.type !== "character") return;
+  if (!coinDenomination(item) && !coinDenomination(data)) return;
+  if (item.system?.container || foundry.utils.getProperty(data, "system.container")) return;
+  return false;
 });
 
 Hooks.once("ready", () => {
