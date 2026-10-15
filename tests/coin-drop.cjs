@@ -32,8 +32,7 @@ const sandbox = {
   game,
   fromUuidSync: findUuid,
   console,
-  ui: {notifications: {warn() {}, error() {}, info() {}}},
-  globalThis: null
+  ui: {notifications: {warn() {}, error() {}, info() {}}}
 };
 vm.runInNewContext(source + "\nglobalThis.__test = {installGlobalCurrencyDrag};", sandbox, {filename: "container-coins.js"});
 
