@@ -299,6 +299,20 @@ function resolveContainerDropTarget(event) {
   return null;
 }
 
+// Only the character's currency panel accepts physical coins as wallet money.
+// Ordinary inventory rows may contain price icons (.currency.gp), so require
+// a real currency input within the matched section rather than the icon class.
+function isCharacterCurrencyPanelTarget(target) {
+  if (!(target instanceof Element)) return false;
+  const panel = target.closest("section.currency, dnd5e-inventory .currency, .inventory-element .currency");
+  if (!panel) return false;
+  const inputs = 'input[name="system.currency.gp"], input[name="system.currency.sp"], input[name="system.currency.cp"]';
+  if (panel.matches("section.currency") || panel.querySelector(inputs)) {
+    return !!(panel.matches("section.currency") ? panel.querySelector(inputs) : true);
+  }
+  return !!panel.closest("label")?.querySelector(inputs);
+}
+
 function clearCurrencyDropTargets() {
   for (const element of document.querySelectorAll(".lipatos-currency-drop-target")) {
     element.classList.remove("lipatos-currency-drop-target");
@@ -327,41 +341,65 @@ function installGlobalCurrencyDrag() {
   }, true);
 
   document.addEventListener("drop", event => {
+    const target = event.target instanceof Element ? event.target : null;
     const container = resolveContainerDropTarget(event);
+    const itemData = parseDropData(event);
+    const source = itemData?.type === "Item" ? syncItemFromDropData(itemData) : null;
 
-    // GM world-item coin templates must be intercepted here, at document capture phase,
-    // BEFORE D&D5e can clone the item into the actor root inventory.
-    if (container) {
-      const itemData = parseDropData(event);
-      if (itemData?.type === "Item") {
-        const source = syncItemFromDropData(itemData);
-        if (isWorldCoinTemplate(source)) {
-          event.preventDefault();
-          event.stopImmediatePropagation?.();
-          event.stopPropagation();
-          clearCurrencyDropTargets();
+    // Intercept GM templates before D&D5e clones them into the actor inventory.
+    if (container && isWorldCoinTemplate(source)) {
+      event.preventDefault();
+      event.stopImmediatePropagation?.();
+      event.stopPropagation();
+      clearCurrencyDropTargets();
 
-          void grantWorldTemplateCoinsToContainer(container, source).catch(err => {
-            console.error(MODULE_ID + " | Ошибка глобальной выдачи монет ГМа в контейнер", err);
-            ui.notifications.error("LipatoS: не удалось добавить монеты в контейнер.");
-          });
-          return;
-        }
-      }
+      void grantWorldTemplateCoinsToContainer(container, source).catch(err => {
+        console.error(MODULE_ID + " | Ошибка глобальной выдачи монет ГМа в контейнер", err);
+        ui.notifications.error("LipatoS: не удалось добавить монеты в контейнер.");
+      });
+      return;
     }
 
-    const data = currencyDragData(event);
-    if (!data || !container) return;
+    const currencyData = currencyDragData(event);
+    if (currencyData) {
+      // Wallet icon can be dragged only into a container. All other drops do nothing.
+      event.preventDefault();
+      event.stopImmediatePropagation?.();
+      event.stopPropagation();
+      clearCurrencyDropTargets();
+
+      if (container) {
+        void moveCurrencyToContainer(currencyData, container).catch(err => {
+          console.error(MODULE_ID + " | Ошибка глобального переноса валюты в контейнер", err);
+          ui.notifications.error("LipatoS: не удалось переместить монеты в контейнер.");
+        });
+      }
+      return;
+    }
+
+    if (!source || !coinDenomination(source) || container) return;
+
+    // Physical coin drops onto ordinary inventory must be swallowed BEFORE
+    // Foundry and item-move-stack can import/transfer the Item.
+    if (!target?.closest("dnd5e-inventory, .inventory-element")) return;
+    const wallet = isCharacterCurrencyPanelTarget(target);
+    const actor = actorFromApp(applicationFromElement(target));
+
+    // When the application cannot be found here, the bound character sheet's
+    // capture listener still has the opportunity to handle a wallet drop.
+    if (wallet && !actor) return;
 
     event.preventDefault();
     event.stopImmediatePropagation?.();
     event.stopPropagation();
-    clearCurrencyDropTargets();
 
-    void moveCurrencyToContainer(data, container).catch(err => {
-      console.error(MODULE_ID + " | Ошибка глобального переноса валюты в контейнер", err);
-      ui.notifications.error("LipatoS: не удалось переместить монеты в контейнер.");
-    });
+    if (wallet && actor?.type === "character") {
+      void absorbDroppedCoin(actor, source).catch(err => {
+        console.error(MODULE_ID + " | Ошибка зачисления монет", err);
+        ui.notifications.error("LipatoS: не удалось зачислить монеты.");
+      });
+    }
+    // Everything else (ordinary inventory, item rows, blank space) is a no-op.
   }, true);
 
   document.addEventListener("dragend", clearCurrencyDropTargets, true);
@@ -705,6 +743,10 @@ function onCharacterInventoryDrop(event, actor) {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation?.();
+
+  // Currency is credited ONLY when dropped onto the character's wallet panel.
+  // Dropping the same coin anywhere else in inventory must have no effect.
+  if (!isCharacterCurrencyPanelTarget(event.target)) return;
 
   void absorbDroppedCoin(actor, item).catch(err => {
     console.error(MODULE_ID + " | Ошибка зачисления монет", err);
