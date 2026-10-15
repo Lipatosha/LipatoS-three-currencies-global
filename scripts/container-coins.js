@@ -764,6 +764,18 @@ function bindCharacterDrop(app, html) {
   wiredActorRoots.add(root);
 
   root.addEventListener("dragover", event => {
+    // Foundry doesn't always mark the currency section as an Item drop zone.
+    // Accept a pending text/plain Item drag there; the drop handler only
+    // credits actual LipatoS coin Items, leaving ordinary items untouched.
+    if (!activeCurrencyDrag && isCharacterCurrencyPanelTarget(event.target)) {
+      const types = Array.from(event.dataTransfer?.types ?? []);
+      if (types.includes("text/plain")) {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      }
+      return;
+    }
+
     if (!activeCurrencyDrag) return;
     const target = event.target.closest?.(".container[data-item-id]");
     if (!target) return;
